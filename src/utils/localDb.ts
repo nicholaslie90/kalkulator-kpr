@@ -57,3 +57,54 @@ export async function setDbValue<T>(key: string, value: T): Promise<void> {
     console.error(`Failed to write key "${key}" to IndexedDB:`, error);
   }
 }
+
+/**
+ * Export ALL key-value pairs from IndexedDB as a plain JSON object.
+ */
+export async function exportAllData(): Promise<Record<string, unknown>> {
+  try {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const getAllKeys = store.getAllKeys();
+      const getAllValues = store.getAll();
+
+      tx.oncomplete = () => {
+        const keys = getAllKeys.result as string[];
+        const values = getAllValues.result;
+        const data: Record<string, unknown> = {};
+        keys.forEach((key, i) => {
+          data[key] = values[i];
+        });
+        resolve(data);
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (error) {
+    console.error('Failed to export all data from IndexedDB:', error);
+    return {};
+  }
+}
+
+/**
+ * Import a full JSON snapshot into IndexedDB, overwriting all existing keys.
+ */
+export async function importAllData(data: Record<string, unknown>): Promise<void> {
+  try {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      // Clear existing data first
+      store.clear();
+      for (const [key, value] of Object.entries(data)) {
+        store.put(value, key);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (error) {
+    console.error('Failed to import data into IndexedDB:', error);
+  }
+}

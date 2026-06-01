@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { PropertyProfile, UpfrontCosts, KprScenario, BankScheme } from './utils/types';
 import { calculateKpr } from './utils/kprCalculations';
 import { formatRupiah } from './utils/formatters';
-import { getDbValue, setDbValue } from './utils/localDb';
+import { getDbValue, setDbValue, exportAllData, importAllData } from './utils/localDb';
 
 // Components
 import { PropertyManager } from './components/PropertyManager';
@@ -24,7 +24,9 @@ import {
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  Building 
+  Building,
+  Download,
+  Upload
 } from 'lucide-react';
 
 // Sample mock data for first load
@@ -300,19 +302,58 @@ export default function App() {
     return (savedTab as any) || 'calculator';
   });
 
-  // Load state from IndexedDB on mount
+  // Load state from IndexedDB on mount (with auto-seed from kpr-seed.json)
   useEffect(() => {
     async function loadState() {
       try {
-        // Load properties
+        // Check if IndexedDB has any data at all
         const savedProps = await getDbValue('kpr_properties', null);
+        const localProps = localStorage.getItem('kpr_properties');
+        const hasExistingData = savedProps !== null || localProps !== null;
+
+        // If no existing data, try to auto-seed from kpr-seed.json (for git clone scenarios)
+        if (!hasExistingData) {
+          try {
+            const seedResponse = await fetch('/kpr-seed.json');
+            if (seedResponse.ok) {
+              const seedData = await seedResponse.json();
+              if (seedData && typeof seedData === 'object' && Object.keys(seedData).length > 0) {
+                console.log('🌱 Auto-seeding from kpr-seed.json...');
+                await importAllData(seedData);
+                // Reload state from the freshly seeded IndexedDB
+                const seededProps = await getDbValue('kpr_properties', SAMPLE_PROPERTIES);
+                setProperties(seededProps);
+                const seededSelectedId = await getDbValue('kpr_selected_id', seededProps[0]?.id || null);
+                setSelectedPropertyId(seededSelectedId);
+                const seededBankSchemes = await getDbValue('kpr_bank_schemes', SAMPLE_BANK_SCHEMES);
+                setBankSchemes(seededBankSchemes);
+                const seededSelectedBankId = await getDbValue('kpr_selected_bank_id', SAMPLE_BANK_SCHEMES[0].id);
+                setSelectedBankSchemeId(seededSelectedBankId);
+                const seededUpfront = await getDbValue('kpr_upfront', DEFAULT_UPFRONT);
+                setUpfrontCosts(seededUpfront);
+                const seededScenarios = await getDbValue('kpr_scenarios', DEFAULT_SCENARIOS);
+                setScenarios(seededScenarios);
+                const seededExtras = await getDbValue('kpr_extras', {});
+                setExtraPaymentsByProperty(seededExtras);
+                const seededTab = await getDbValue('kpr_active_tab', 'calculator');
+                setActiveTab(seededTab as any);
+                const seededTheme = await getDbValue('kpr_theme', 'dark');
+                setDarkMode(seededTheme === 'dark');
+                console.log('✅ Auto-seed complete!');
+                return; // Skip the normal load flow
+              }
+            }
+          } catch {
+            // Seed file not found or invalid - fall through to normal defaults
+            console.log('ℹ️ No kpr-seed.json found, using built-in defaults.');
+          }
+        }
+
+        // Normal load flow: IndexedDB -> localStorage -> defaults
         if (savedProps) {
           setProperties(savedProps);
-        } else {
-          const localProps = localStorage.getItem('kpr_properties');
-          if (localProps) {
-            setProperties(JSON.parse(localProps));
-          }
+        } else if (localProps) {
+          setProperties(JSON.parse(localProps));
         }
 
         // Load selected property ID
@@ -323,12 +364,9 @@ export default function App() {
           const localSelectedId = localStorage.getItem('kpr_selected_id');
           if (localSelectedId) {
             setSelectedPropertyId(localSelectedId);
-          } else {
-            const localProps = localStorage.getItem('kpr_properties');
-            if (localProps) {
-              const parsed = JSON.parse(localProps);
-              if (parsed.length > 0) setSelectedPropertyId(parsed[0].id);
-            }
+          } else if (localProps) {
+            const parsed = JSON.parse(localProps);
+            if (parsed.length > 0) setSelectedPropertyId(parsed[0].id);
           }
         }
 
@@ -341,7 +379,6 @@ export default function App() {
           if (localBankSchemes) {
             setBankSchemes(JSON.parse(localBankSchemes));
           } else {
-            // Migrate from old kpr_inputs if it exists
             const localInputs = localStorage.getItem('kpr_inputs');
             if (localInputs) {
               const parsedInputs = JSON.parse(localInputs);
@@ -419,7 +456,6 @@ export default function App() {
       } catch (err) {
         console.error("Failed to load initial KPR states from database:", err);
       } finally {
-        // Wait 500ms for a premium loading fade animation
         setTimeout(() => {
           setIsLoading(false);
         }, 500);
@@ -490,6 +526,54 @@ export default function App() {
     localStorage.setItem('kpr_theme', darkMode ? 'dark' : 'light');
     setDbValue('kpr_theme', darkMode ? 'dark' : 'light');
   }, [darkMode, isLoading]);
+
+  // === Data Export / Import Handlers ===
+  const handleExportData = async () => {
+    try {
+      const data = await exportAllData();
+      data._exportedAt = new Date().toISOString();
+      data._version = '1.0';
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'kpr-seed.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert('✅ Data berhasil di-export!\n\nSimpan file "kpr-seed.json" ke folder public/ project Anda, lalu commit & push ke Git.\n\nKetika clone di laptop lain, data akan otomatis ter-load.');
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('❌ Gagal meng-export data.');
+    }
+  };
+
+  const handleImportData = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || typeof data !== 'object') {
+          alert('❌ File JSON tidak valid.');
+          return;
+        }
+        if (!confirm('⚠️ Import akan menimpa SEMUA data saat ini. Lanjutkan?')) return;
+        await importAllData(data);
+        alert('✅ Data berhasil di-import! Halaman akan di-reload.');
+        window.location.reload();
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('❌ Gagal meng-import data. Pastikan file JSON valid.');
+      }
+    };
+    input.click();
+  };
 
   // Property Handlers
   const handleAddProperty = (p: PropertyProfile) => {
@@ -641,13 +725,32 @@ export default function App() {
             </div>
           )}
 
-          <button 
-            className="btn btn-secondary" 
-            style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
-            onClick={() => setDarkMode(!darkMode)}
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
+              onClick={handleExportData}
+              title="Export data ke JSON (untuk push ke Git)"
+            >
+              <Download size={16} />
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
+              onClick={handleImportData}
+              title="Import data dari JSON"
+            >
+              <Upload size={16} />
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
+              onClick={() => setDarkMode(!darkMode)}
+              title={darkMode ? 'Light Mode' : 'Dark Mode'}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
         </div>
       </header>
 
