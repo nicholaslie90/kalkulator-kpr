@@ -29,6 +29,7 @@ export interface InterestTier {
 
 export type CalculationType = 'annuity' | 'effective' | 'flat';
 export type InterestScheme = 'fixed' | 'tiered';
+export type ExtraPaymentMode = 'reduce_tenor' | 'reduce_installment';
 
 export interface KprInputs {
   tenorYears: number;
@@ -39,6 +40,7 @@ export interface KprInputs {
   tieredTiers: InterestTier[]; // used if scheme is 'tiered'
   floatingRate: number;
   startDate: string; // "YYYY-MM"
+  extraPaymentMode?: ExtraPaymentMode;
 }
 
 export interface BankScheme extends KprInputs {

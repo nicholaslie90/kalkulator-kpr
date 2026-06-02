@@ -77,7 +77,8 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
     adminFee: 1000000,
     appraisalFee: 1500000,
     notarisPercent: 1.5,
-    asuransiPercent: 1.0
+    asuransiPercent: 1.0,
+    extraPaymentMode: 'reduce_installment'
   };
 
   const handleSchemeChange = (scheme: InterestScheme) => {
@@ -143,7 +144,8 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
       adminFee: 1000000,
       appraisalFee: 1500000,
       notarisPercent: 1.5,
-      asuransiPercent: 1.0
+      asuransiPercent: 1.0,
+      extraPaymentMode: 'reduce_installment'
     };
     onAddBankScheme(newBank);
   };
@@ -371,6 +373,47 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
           {activeScheme.calculationType === 'annuity' && "* Anuitas: Paling umum digunakan bank. Jumlah cicilan pokok + bunga bulanan tetap di setiap periode bunga."}
           {activeScheme.calculationType === 'effective' && "* Efektif: Cicilan bulanan perlahan menurun karena bunga dihitung dari sisa saldo pokok pinjaman yang kian menyusut."}
           {activeScheme.calculationType === 'flat' && "* Flat: Suku bunga dihitung merata dari plafond awal. Cicilan selalu sama sepanjang tenor (banyak di Syariah/Multiguna)."}
+        </p>
+      </div>
+
+      {/* Mode Pelunasan Ekstra */}
+      <div className="input-group">
+        <label className="input-label">Mode Pelunasan Ekstra (Prepayment)</label>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          <button
+            type="button"
+            className="btn"
+            style={{ 
+              flex: 1, 
+              background: activeScheme.extraPaymentMode === 'reduce_tenor' ? 'var(--primary)' : 'var(--bg-tertiary)',
+              color: activeScheme.extraPaymentMode === 'reduce_tenor' ? '#ffffff' : 'var(--text-primary)',
+              border: activeScheme.extraPaymentMode === 'reduce_tenor' ? 'none' : '1px solid var(--border-color)',
+              fontSize: '0.85rem',
+            }}
+            onClick={() => handleFieldChange('extraPaymentMode', 'reduce_tenor')}
+          >
+            Mempercepat Tenor (Cicilan Tetap)
+          </button>
+          <button
+            type="button"
+            className="btn"
+            style={{ 
+              flex: 1, 
+              background: (activeScheme.extraPaymentMode || 'reduce_installment') === 'reduce_installment' ? 'var(--primary)' : 'var(--bg-tertiary)',
+              color: (activeScheme.extraPaymentMode || 'reduce_installment') === 'reduce_installment' ? '#ffffff' : 'var(--text-primary)',
+              border: (activeScheme.extraPaymentMode || 'reduce_installment') === 'reduce_installment' ? 'none' : '1px solid var(--border-color)',
+              fontSize: '0.85rem',
+            }}
+            onClick={() => handleFieldChange('extraPaymentMode', 'reduce_installment')}
+          >
+            Mengurangi Cicilan (Tenor Tetap)
+          </button>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+          {(activeScheme.extraPaymentMode || 'reduce_installment') === 'reduce_installment' 
+            ? "* Mengurangi Cicilan: Jangka waktu tenor KPR tetap sama, namun bank menghitung ulang cicilan bulanan Anda berikutnya menjadi lebih kecil sesuai sisa pokok pinjaman yang baru."
+            : "* Mempercepat Tenor: Jumlah cicilan bulanan tetap sama. Setiap pelunasan ekstra memotong sisa pokok KPR secara langsung, mempersingkat durasi pinjaman."
+          }
         </p>
       </div>
 

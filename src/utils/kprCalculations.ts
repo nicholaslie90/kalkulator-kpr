@@ -64,16 +64,18 @@ export const calculateKpr = (
   const plafond = Math.max(0, netPrice - dpAmount);
   const tenorMonths = inputs.tenorYears * 12;
   const amortizationSchedule: AmortizationRow[] = [];
+  const extraPaymentMode = inputs.extraPaymentMode || 'reduce_installment';
   
   let remainingBalance = plafond;
+  let hypotheticalBalance = plafond;
   let totalInterest = 0;
   let totalPayment = 0;
   let monthlyInstallmentInitial = 0;
   let monthlyInstallmentFloating = 0;
 
-  // Variables to track rate and base installment for annuity
-  let lastRate = -1;
-  let baseInstallment = 0;
+  // Variables to track rate and base installment for hypothetical annuity
+  let lastRateHypothetical = -1;
+  let baseInstallmentHypothetical = 0;
 
   for (let m = 1; m <= tenorMonths; m++) {
     if (remainingBalance <= 0) break;
@@ -82,46 +84,85 @@ export const calculateKpr = (
     const monthlyRate = annualRate / 100 / 12;
     const remainingMonths = tenorMonths - m + 1;
 
+    // 1. Calculate hypothetical row (no extra payments) to find standard scheduled installment
+    let hypotheticalInstallment = 0;
+    let hypotheticalPrincipal = 0;
+    let hypotheticalInterest = 0;
+
+    if (inputs.calculationType === 'annuity') {
+      if (annualRate !== lastRateHypothetical) {
+        lastRateHypothetical = annualRate;
+        if (monthlyRate > 0) {
+          baseInstallmentHypothetical = hypotheticalBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / 
+                                       (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+        } else {
+          baseInstallmentHypothetical = hypotheticalBalance / remainingMonths;
+        }
+      }
+      hypotheticalInterest = hypotheticalBalance * monthlyRate;
+      hypotheticalInstallment = Math.min(baseInstallmentHypothetical, hypotheticalBalance + hypotheticalInterest);
+      hypotheticalPrincipal = hypotheticalInstallment - hypotheticalInterest;
+    } else if (inputs.calculationType === 'effective') {
+      hypotheticalPrincipal = hypotheticalBalance / remainingMonths;
+      hypotheticalInterest = hypotheticalBalance * monthlyRate;
+      hypotheticalInstallment = hypotheticalPrincipal + hypotheticalInterest;
+    } else {
+      // Flat
+      hypotheticalPrincipal = plafond / tenorMonths;
+      hypotheticalInterest = plafond * monthlyRate;
+      hypotheticalInstallment = hypotheticalPrincipal + hypotheticalInterest;
+    }
+    hypotheticalBalance = Math.max(0, hypotheticalBalance - hypotheticalPrincipal);
+
+    // 2. Calculate actual row (with extra payments)
     let installment = 0;
     let interestPayment = 0;
     let principalPayment = 0;
 
     if (inputs.calculationType === 'annuity') {
-      // Annuity: Installment changes when interest rate changes
-      if (annualRate !== lastRate) {
-        lastRate = annualRate;
+      if (extraPaymentMode === 'reduce_installment') {
+        // Recalculate base installment every month using actual remaining balance and original remaining tenor
+        let currentBaseInstallment = 0;
         if (monthlyRate > 0) {
-          // Annuity formula: P * r * (1+r)^n / ((1+r)^n - 1)
-          baseInstallment = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / 
-                            (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+          currentBaseInstallment = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / 
+                                   (Math.pow(1 + monthlyRate, remainingMonths) - 1);
         } else {
-          baseInstallment = remainingBalance / remainingMonths;
+          currentBaseInstallment = remainingBalance / remainingMonths;
         }
+        interestPayment = remainingBalance * monthlyRate;
+        installment = Math.min(currentBaseInstallment, remainingBalance + interestPayment);
+        principalPayment = installment - interestPayment;
+      } else {
+        // reduce_tenor: keep the hypothetical scheduled installment amount
+        interestPayment = remainingBalance * monthlyRate;
+        installment = Math.min(hypotheticalInstallment, remainingBalance + interestPayment);
+        principalPayment = installment - interestPayment;
       }
-      
-      interestPayment = remainingBalance * monthlyRate;
-      installment = Math.min(baseInstallment, remainingBalance + interestPayment);
-      principalPayment = installment - interestPayment;
-      
     } else if (inputs.calculationType === 'effective') {
-      // Effective: Fixed principal payment, interest based on remaining balance
-      // Note: If rate changes, we still pay the remaining balance divided by remaining months as principal
-      // In Indonesia, effective principal is Plafond / Tenor, but with rate changes and potential extra payments, 
-      // we recalculate the base principal as remainingBalance / remainingMonths to ensure it pays off.
-      const basePrincipal = remainingBalance / remainingMonths;
-      interestPayment = remainingBalance * monthlyRate;
-      installment = basePrincipal + interestPayment;
-      principalPayment = basePrincipal;
-      
+      if (extraPaymentMode === 'reduce_installment') {
+        const basePrincipal = remainingBalance / remainingMonths;
+        interestPayment = remainingBalance * monthlyRate;
+        installment = basePrincipal + interestPayment;
+        principalPayment = basePrincipal;
+      } else {
+        // reduce_tenor: keep the hypothetical principal payment amount
+        principalPayment = Math.min(hypotheticalPrincipal, remainingBalance);
+        interestPayment = remainingBalance * monthlyRate;
+        installment = principalPayment + interestPayment;
+      }
     } else {
-      // Flat: Interest calculated from Plafond (original loan amount), fixed principal
-      // flat interest = Plafond * rate_annual / 12
-      // flat principal = Plafond / tenorMonths
-      // If interest rate changes, interest payment changes to Plafond * new_rate_annual / 12
-      const basePrincipal = plafond / tenorMonths;
-      interestPayment = plafond * monthlyRate;
-      installment = basePrincipal + interestPayment;
-      principalPayment = basePrincipal;
+      // Flat
+      if (extraPaymentMode === 'reduce_installment') {
+        const basePrincipal = remainingBalance / remainingMonths;
+        interestPayment = remainingBalance * monthlyRate;
+        installment = basePrincipal + interestPayment;
+        principalPayment = basePrincipal;
+      } else {
+        // reduce_tenor: keep the hypothetical principal payment amount
+        principalPayment = Math.min(hypotheticalPrincipal, remainingBalance);
+        interestPayment = remainingBalance > 0 ? (plafond * monthlyRate) : 0;
+        installment = principalPayment + interestPayment;
+      }
     }
 
     // Capture initial and floating installment examples for dashboard display

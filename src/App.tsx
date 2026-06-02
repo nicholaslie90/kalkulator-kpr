@@ -96,7 +96,8 @@ const SAMPLE_BANK_SCHEMES: BankScheme[] = [
     adminFee: 1000000,
     appraisalFee: 1500000,
     notarisPercent: 1.5,
-    asuransiPercent: 1.0
+    asuransiPercent: 1.0,
+    extraPaymentMode: 'reduce_installment'
   },
   {
     id: 'bank-mandiri',
@@ -117,7 +118,8 @@ const SAMPLE_BANK_SCHEMES: BankScheme[] = [
     adminFee: 500000,
     appraisalFee: 1000000,
     notarisPercent: 1.2,
-    asuransiPercent: 1.0
+    asuransiPercent: 1.0,
+    extraPaymentMode: 'reduce_installment'
   },
   {
     id: 'bank-btn',
@@ -137,7 +139,8 @@ const SAMPLE_BANK_SCHEMES: BankScheme[] = [
     adminFee: 1200000,
     appraisalFee: 1500000,
     notarisPercent: 1.5,
-    asuransiPercent: 1.1
+    asuransiPercent: 1.1,
+    extraPaymentMode: 'reduce_installment'
   }
 ];
 
@@ -391,7 +394,8 @@ export default function App() {
                 adminFee: 1000000,
                 appraisalFee: 1500000,
                 notarisPercent: 1.5,
-                asuransiPercent: 1.0
+                asuransiPercent: 1.0,
+                extraPaymentMode: 'reduce_installment'
               };
               setBankSchemes([migratedBank, SAMPLE_BANK_SCHEMES[1], SAMPLE_BANK_SCHEMES[2]]);
             }

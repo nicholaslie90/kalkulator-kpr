@@ -1,4 +1,6 @@
 {
+  "_exportedAt": "2026-06-02T02:51:23.279Z",
+  "_version": "1.0",
   "kpr_active_tab": "calendar",
   "kpr_bank_schemes": [
     {
@@ -58,7 +60,7 @@
         {
           "id": "t-p63c4l6",
           "rate": 8.95,
-          "durationYears": 14
+          "durationYears": 4
         }
       ],
       "floatingRate": 11,
@@ -175,6 +177,30 @@
       "appraisalFee": 1500000,
       "notarisPercent": 1.5,
       "asuransiPercent": 1
+    },
+    {
+      "id": "bank-1780367637332",
+      "bankName": "Maybank",
+      "schemeName": "Tenjo",
+      "tenorYears": 10,
+      "calculationType": "annuity",
+      "interestScheme": "fixed",
+      "fixedRate": 5.62,
+      "fixedYears": 5,
+      "tieredTiers": [
+        {
+          "id": "t-1780367637332",
+          "rate": 4.5,
+          "durationYears": 3
+        }
+      ],
+      "floatingRate": 13.49,
+      "startDate": "2021-06",
+      "provisiPercent": 1,
+      "adminFee": 1000000,
+      "appraisalFee": 1500000,
+      "notarisPercent": 1.5,
+      "asuransiPercent": 1
     }
   ],
   "kpr_extras": {},
@@ -208,7 +234,7 @@
     {
       "id": "1780326553598",
       "name": "Philo",
-      "developer": "Alam Sutera",
+      "developer": "Alam Sutera Rasuna",
       "picName": "Angela",
       "picPhone": "",
       "houseType": "Lamda",
@@ -230,7 +256,7 @@
     {
       "id": "prop-1780328893063",
       "name": "Philo",
-      "developer": "Alam Sutera",
+      "developer": "Alam Sutera Rasuna",
       "picName": "Angela",
       "picPhone": "",
       "houseType": "Kappa",
@@ -248,6 +274,28 @@
       "bookingFee": 10000000,
       "notes": "- Solar water heater\n- Torrent 1000L \n- Free 3 AC (2 unit 3/4 PK, 1 unit 1 PK)\n- Smart door lock\n- Free 3 CCTV",
       "createdAt": 1780328893063
+    },
+    {
+      "id": "1780367631033",
+      "name": "Tenjo",
+      "developer": "Agung Podomoro",
+      "picName": "",
+      "picPhone": "",
+      "houseType": "",
+      "landWidth": 8,
+      "landLength": 12,
+      "buildingArea": 36,
+      "bedrooms": "2",
+      "bathrooms": "1",
+      "carport": "1",
+      "price": 320000000,
+      "discount": 0,
+      "discountPercent": 0,
+      "dpPercent": 10,
+      "dpAmount": 32000000,
+      "bookingFee": 2000000,
+      "notes": "",
+      "createdAt": 1780367631033
     }
   ],
   "kpr_scenarios": [
@@ -256,7 +304,7 @@
       "tenorYears": 15
     },
     {
-      "dpPercent": 15,
+      "dpPercent": 10,
       "tenorYears": 20
     },
     {
@@ -264,12 +312,12 @@
       "tenorYears": 15
     }
   ],
-  "kpr_selected_bank_id": "bank-1780329599579",
-  "kpr_selected_id": "prop-1780328893063",
-  "kpr_theme": "dark",
+  "kpr_selected_bank_id": "bank-1780367637332",
+  "kpr_selected_id": "1780367631033",
+  "kpr_theme": "light",
   "kpr_upfront": {
     "useBphtbAuto": true,
-    "bphtbNpoptkp": 60000000,
+    "bphtbNpoptkp": 15000000,
     "provisiPercent": 1,
     "adminFee": 1000000,
     "appraisalFee": 1500000,
@@ -282,7 +330,5 @@
         "amount": 10000000
       }
     ]
-  },
-  "_exportedAt": "2026-06-01T16:12:36.724Z",
-  "_version": "1.0"
+  }
 }
