@@ -6,7 +6,9 @@ Dibangun dengan **Vite + React + TypeScript** dan desain modern dark-mode dengan
 
 ![Built with](https://img.shields.io/badge/Built%20with-React%20%2B%20TypeScript-blue?style=flat-square)
 ![Vite](https://img.shields.io/badge/Bundler-Vite-purple?style=flat-square)
-![License](https://img.shields.io/badge/License-Private-red?style=flat-square)
+![Deploy](https://img.shields.io/badge/Deploy-GitHub%20Pages-222?style=flat-square)
+
+> 🌐 **Live:** `https://<username>.github.io/kalkulator-kpr/` — berjalan sepenuhnya di browser, tanpa server. Semua data tersimpan **lokal di browser Anda** (IndexedDB), tidak pernah dikirim ke mana pun.
 
 ---
 
@@ -44,11 +46,11 @@ Dibangun dengan **Vite + React + TypeScript** dan desain modern dark-mode dengan
 - Perbandingan penawaran bank dengan **badge otomatis** (Cicilan Terendah, Bunga Terhemat, dll.)
 - Simulasi skenario DP/Tenor
 
-### 💾 Persistensi Data & Sinkronisasi Git
+### 💾 Persistensi Data (Local-First)
 - Database client-side **IndexedDB** + cadangan **localStorage**
-- **Export/Import JSON** — simpan state database ke file `kpr-seed.json`
-- **Auto-seed** saat clone di laptop baru: data otomatis ter-load dari `public/kpr-seed.json`
-- Cocok untuk private repository — data KPR aman tersimpan di Git
+- Data **hanya tersimpan di browser Anda** — tidak ada server, tidak ada cloud, tidak ada yang dikirim keluar
+- **Export/Import JSON** — unduh seluruh state ke satu file dan impor kembali untuk berpindah perangkat/browser
+- Saat pertama dibuka, aplikasi menampilkan **data contoh bawaan** sebagai titik awal; ganti dengan data Anda sendiri
 
 ---
 
@@ -72,38 +74,29 @@ npm run preview
 
 ---
 
-## 💾 Sinkronisasi Data via Git
+## 🚀 Deploy ke GitHub Pages
 
-Aplikasi ini menggunakan **IndexedDB** sebagai database lokal di browser. Karena IndexedDB tidak bisa langsung di-push ke Git, disediakan mekanisme **Export/Import JSON**:
+Aplikasi ini di-deploy otomatis ke **GitHub Pages** lewat GitHub Actions.
 
-### Workflow Sinkronisasi
+### Setup (sekali saja)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  1. Edit data di browser (properti, bank, cicilan, dll.)     │
-│  2. Klik tombol ⬇ Export di header kanan atas                │
-│  3. Simpan file "kpr-seed.json" ke folder public/            │
-│  4. git add, commit, push                                    │
-│  5. Di laptop lain: git clone/pull → npm install → npm run dev│
-│  6. Data otomatis ter-load dari kpr-seed.json! ✅            │
-└──────────────────────────────────────────────────────────────┘
-```
+1. Pastikan repository ini **publik** (GitHub Pages gratis hanya untuk repo publik; repo privat butuh GitHub Pro/Team/Enterprise). Karena aplikasi mulai dengan data kosong/contoh, **tidak ada data pribadi yang terekspos** di URL publik.
+2. Buka **Settings → Pages → Build and deployment → Source** dan pilih **GitHub Actions**.
+3. Push ke branch `main`. Workflow `.github/workflows/deploy.yml` akan build dan publish secara otomatis.
+4. Situs tersedia di `https://<username>.github.io/kalkulator-kpr/`.
 
-### Detail Langkah
+> ⚙️ **Catatan base path:** `vite.config.ts` di-set `base: '/kalkulator-kpr/'` agar aset termuat dengan benar di sub-path Pages. Jika nama repo Anda berbeda, sesuaikan nilai `base` tersebut.
 
-1. **Export Data**: Klik tombol ⬇️ (Download) di header → file `kpr-seed.json` ter-download
-2. **Simpan ke Project**: Pindahkan/replace file tersebut ke `public/kpr-seed.json`
-3. **Commit & Push**:
-   ```bash
-   cp ~/Downloads/kpr-seed.json public/kpr-seed.json
-   git add -A
-   git commit -m "update: sync kpr data"
-   git push
-   ```
-4. **Clone di Laptop Lain**: Saat pertama kali buka di browser baru (tanpa data IndexedDB/localStorage), aplikasi akan otomatis fetch `kpr-seed.json` dan meng-import seluruh data.
+---
 
-### Import Manual
-Klik tombol ⬆️ (Upload) di header untuk meng-import file JSON secara manual kapan saja.
+## 💾 Memindahkan Data Antar Perangkat
+
+Karena data hanya hidup di browser (IndexedDB), gunakan **Export/Import JSON** untuk berpindah perangkat atau browser:
+
+1. **Export**: Klik tombol ⬇️ (Download) di header → file `kpr-seed.json` ter-unduh berisi seluruh state Anda.
+2. **Import**: Di perangkat/browser lain, buka aplikasi lalu klik tombol ⬆️ (Upload) dan pilih file tersebut.
+
+File ekspor adalah cadangan pribadi Anda — simpan sendiri; **jangan** commit ke repo publik jika berisi data sensitif.
 
 ---
 
@@ -125,9 +118,10 @@ Klik tombol ⬆️ (Upload) di header untuk meng-import file JSON secara manual 
 
 ```
 kalkulator-kpr/
+├── .github/workflows/
+│   └── deploy.yml             # 🚀 Build & deploy ke GitHub Pages
 ├── public/
-│   ├── favicon.svg
-│   └── kpr-seed.json          # 💾 Data snapshot untuk sinkronisasi Git
+│   └── favicon.svg
 ├── src/
 │   ├── components/
 │   │   ├── AmortizationCalendar.tsx   # Kalender cicilan & pelunasan ekstra
@@ -153,10 +147,10 @@ kalkulator-kpr/
 
 ## 📝 Catatan
 
-- Ini adalah **private repository** untuk keperluan pribadi
-- Data properti dan simulasi KPR tersimpan aman di browser lokal
-- Gunakan fitur Export/Import untuk memindahkan data antar perangkat via Git
+- Data properti dan simulasi KPR tersimpan **hanya di browser lokal** (IndexedDB) — tidak pernah dikirim ke server
+- Gunakan fitur **Export/Import JSON** untuk memindahkan data antar perangkat
 - Aplikasi berjalan sepenuhnya di client-side, **tidak ada server/backend**
+- Di-deploy sebagai situs statis di **GitHub Pages**
 
 ---
 

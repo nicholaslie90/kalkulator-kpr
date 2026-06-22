@@ -317,7 +317,7 @@ export default function App() {
         // If no existing data, try to auto-seed from kpr-seed.json (for git clone scenarios)
         if (!hasExistingData) {
           try {
-            const seedResponse = await fetch('/kpr-seed.json');
+            const seedResponse = await fetch(`${import.meta.env.BASE_URL}kpr-seed.json`);
             if (seedResponse.ok) {
               const seedData = await seedResponse.json();
               if (seedData && typeof seedData === 'object' && Object.keys(seedData).length > 0) {
