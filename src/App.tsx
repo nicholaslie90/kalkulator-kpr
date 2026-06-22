@@ -701,10 +701,11 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
-      
+    <div style={{ display: 'flex', flexDirection: 'column', ...(isMobile ? { minHeight: '100vh' } : { height: '100vh', overflow: 'hidden' }) }}>
+
       {/* Upper Navigation Header */}
-      <header className="glass-panel" style={{ 
+      <header className="glass-panel" style={{
+        flexShrink: 0,
         position: 'sticky', 
         top: 0, 
         zIndex: 50, 
@@ -813,7 +814,7 @@ export default function App() {
       </header>
 
       {/* Main Workspace Layout */}
-      <div style={{ display: 'flex', flex: 1, flexDirection: 'row', position: 'relative' }}>
+      <div style={{ display: 'flex', flex: 1, flexDirection: 'row', position: 'relative', minHeight: 0 }}>
 
         {/* Backdrop behind the mobile drawer */}
         {isMobile && sidebarOpen && (
@@ -837,6 +838,7 @@ export default function App() {
           flexDirection: 'column',
           justifyContent: 'space-between',
           flexShrink: 0,
+          overflowY: 'auto',
           ...(isMobile
             ? {
                 position: 'fixed' as const,
@@ -1154,14 +1156,15 @@ export default function App() {
       </div>
 
       {/* Footer copyright */}
-      <footer className="glass-panel" style={{ 
-        borderRadius: 0, 
-        borderLeft: 'none', 
-        borderRight: 'none', 
-        borderBottom: 'none', 
-        padding: '16px', 
-        textAlign: 'center', 
-        fontSize: '0.8rem', 
+      <footer className="glass-panel" style={{
+        flexShrink: 0,
+        borderRadius: 0,
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderBottom: 'none',
+        padding: '16px',
+        textAlign: 'center',
+        fontSize: '0.8rem',
         color: 'var(--text-muted)',
         marginTop: 'auto'
       }}>
