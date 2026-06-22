@@ -28,7 +28,9 @@ import {
   Download,
   Upload,
   AlertTriangle,
-  X
+  X,
+  Menu,
+  Trash2
 } from 'lucide-react';
 
 // Sample mock data for first load
@@ -311,6 +313,27 @@ export default function App() {
   const [sampleNoticeDismissed, setSampleNoticeDismissed] = useState(() => {
     return localStorage.getItem('kpr_sample_notice_dismissed') === 'true';
   });
+
+  // Property pending delete confirmation (null = no dialog open).
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Responsive layout + collapsible sidebar.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !(typeof window !== 'undefined' && window.innerWidth < 768));
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      setSidebarOpen(!e.matches); // open by default on desktop, closed on mobile
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  // Navigate via the sidebar; auto-close the drawer on mobile after selecting.
+  const handleNavClick = (tab: 'properties' | 'calculator' | 'upfront' | 'calendar' | 'compare') => {
+    setActiveTab(tab);
+    if (isMobile) setSidebarOpen(false);
+  };
   const hasSampleData =
     properties.some(p => p.name.startsWith('[CONTOH]')) ||
     bankSchemes.some(b => b.schemeName.startsWith('[CONTOH]'));
@@ -600,7 +623,14 @@ export default function App() {
     setProperties(properties.map(p => p.id === updated.id ? updated : p));
   };
 
+  // Deleting a property asks for confirmation first; actual removal happens in confirmDeleteProperty.
   const handleDeleteProperty = (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDeleteProperty = () => {
+    const id = deleteConfirmId;
+    if (!id) return;
     const newList = properties.filter(p => p.id !== id);
     setProperties(newList);
     if (selectedPropertyId === id) {
@@ -610,6 +640,7 @@ export default function App() {
     const newExtras = { ...extraPaymentsByProperty };
     delete newExtras[id];
     setExtraPaymentsByProperty(newExtras);
+    setDeleteConfirmId(null);
   };
 
   // Extra Payments handlers for the currently selected property
@@ -680,43 +711,54 @@ export default function App() {
         borderRadius: 0, 
         borderLeft: 'none', 
         borderRight: 'none', 
-        borderTop: 'none', 
-        padding: '12px 24px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center' 
+        borderTop: 'none',
+        padding: isMobile ? '10px 14px' : '12px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '8px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ 
-            background: 'linear-gradient(135deg, var(--primary), #6366f1)', 
-            width: '36px', 
-            height: '36px', 
-            borderRadius: 'var(--radius-sm)', 
-            display: 'flex', 
-            alignItems: 'center', 
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', minWidth: 0 }}>
+          <button
+            className="btn btn-secondary"
+            style={{ padding: '8px', borderRadius: 'var(--radius-md)', width: '38px', height: '38px', flexShrink: 0 }}
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label={sidebarOpen ? 'Sembunyikan menu' : 'Tampilkan menu'}
+            title={sidebarOpen ? 'Sembunyikan menu' : 'Tampilkan menu'}
+          >
+            {sidebarOpen && !isMobile ? <X size={18} /> : <Menu size={18} />}
+          </button>
+          <div style={{
+            background: 'linear-gradient(135deg, var(--primary), #6366f1)',
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-sm)',
+            display: isMobile ? 'none' : 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             color: '#fff',
             fontWeight: 800,
             fontSize: '1.2rem',
-            boxShadow: '0 4px 10px var(--primary-glow)'
+            boxShadow: '0 4px 10px var(--primary-glow)',
+            flexShrink: 0
           }}>
             %
           </div>
-          <div>
-            <h1 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, var(--text-primary), var(--primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontSize: isMobile ? '1rem' : '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', background: 'linear-gradient(to right, var(--text-primary), var(--primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               KPR Smart Dashboard
             </h1>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>FINTECH ANALYTICS</span>
+            {!isMobile && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>FINTECH ANALYTICS</span>}
           </div>
         </div>
 
         {/* Selected Property Quick Picker & Theme Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '16px', minWidth: 0 }}>
           {properties.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Pilih Properti:</span>
-              <select 
-                value={selectedPropertyId || ''} 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', minWidth: 0 }}>
+              {!isMobile && <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Pilih Properti:</span>}
+              <select
+                value={selectedPropertyId || ''}
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
                 style={{
                   background: 'var(--bg-tertiary)',
@@ -726,7 +768,9 @@ export default function App() {
                   borderRadius: 'var(--radius-md)',
                   outline: 'none',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  maxWidth: isMobile ? '130px' : 'none',
+                  textOverflow: 'ellipsis'
                 }}
               >
                 {properties.map(p => {
@@ -770,19 +814,42 @@ export default function App() {
 
       {/* Main Workspace Layout */}
       <div style={{ display: 'flex', flex: 1, flexDirection: 'row', position: 'relative' }}>
-        
-        {/* Left Navigation Sidebar */}
-        <aside className="glass-panel" style={{ 
-          width: '240px', 
-          borderRadius: 0, 
-          borderLeft: 'none', 
-          borderBottom: 'none', 
+
+        {/* Backdrop behind the mobile drawer */}
+        {isMobile && sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', zIndex: 55 }}
+          />
+        )}
+
+        {/* Left Navigation Sidebar — desktop: collapsible in-flow; mobile: overlay drawer */}
+        {(sidebarOpen || isMobile) && (
+        <aside className="glass-panel" style={{
+          width: isMobile ? '80vw' : '240px',
+          maxWidth: '300px',
+          borderRadius: 0,
+          borderLeft: 'none',
+          borderBottom: 'none',
           borderTop: 'none',
           padding: '24px 16px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          flexShrink: 0
+          flexShrink: 0,
+          ...(isMobile
+            ? {
+                position: 'fixed' as const,
+                top: 0,
+                bottom: 0,
+                left: 0,
+                zIndex: 60,
+                overflowY: 'auto' as const,
+                transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                transition: 'transform 0.25s ease',
+                boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.35)' : 'none'
+              }
+            : {})
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', paddingLeft: '8px', marginBottom: '8px' }}>
@@ -792,7 +859,7 @@ export default function App() {
             <button 
               className={`btn ${activeTab === 'properties' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
-              onClick={() => setActiveTab('properties')}
+              onClick={() => handleNavClick('properties')}
             >
               <Home size={18} />
               <span>Kelola Properti ({properties.length})</span>
@@ -801,7 +868,7 @@ export default function App() {
             <button 
               className={`btn ${activeTab === 'calculator' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
-              onClick={() => setActiveTab('calculator')}
+              onClick={() => handleNavClick('calculator')}
             >
               <Calculator size={18} />
               <span>Skema & Bunga</span>
@@ -810,7 +877,7 @@ export default function App() {
             <button 
               className={`btn ${activeTab === 'upfront' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
-              onClick={() => setActiveTab('upfront')}
+              onClick={() => handleNavClick('upfront')}
             >
               <Receipt size={18} />
               <span>Biaya Akad & Pajak</span>
@@ -819,7 +886,7 @@ export default function App() {
             <button 
               className={`btn ${activeTab === 'calendar' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
-              onClick={() => setActiveTab('calendar')}
+              onClick={() => handleNavClick('calendar')}
             >
               <CalendarDays size={18} />
               <span>Kalender Cicilan</span>
@@ -828,7 +895,7 @@ export default function App() {
             <button 
               className={`btn ${activeTab === 'compare' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
-              onClick={() => setActiveTab('compare')}
+              onClick={() => handleNavClick('compare')}
             >
               <GitCompare size={18} />
               <span>Bandingkan Pilihan</span>
@@ -852,9 +919,10 @@ export default function App() {
             </div>
           )}
         </aside>
+        )}
 
         {/* Content Area */}
-        <main style={{ flex: 1, padding: '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+        <main style={{ flex: 1, padding: isMobile ? '16px' : '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px', margin: '0 auto', width: '100%', minWidth: 0 }}>
 
           {/* Sample-data notice — visible while built-in example data remains */}
           {hasSampleData && !sampleNoticeDismissed && (
@@ -956,7 +1024,7 @@ export default function App() {
 
           {/* TAB 1: KPR CALCULATOR AND TIMELINE */}
           {activeTab === 'calculator' && (
-            <div className="grid-2 animate-fade-in" style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
+            <div className="grid-2 animate-fade-in" style={{ gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr' }}>
               <KprCalculatorForm 
                 bankSchemes={bankSchemes}
                 selectedBankSchemeId={selectedBankSchemeId}
@@ -1018,7 +1086,7 @@ export default function App() {
 
           {/* TAB 2: UPFRONT COSTS AND TAXES */}
           {activeTab === 'upfront' && (
-            <div className="grid-2 animate-fade-in" style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
+            <div className="grid-2 animate-fade-in" style={{ gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr' }}>
               <UpfrontCostsForm 
                 upfrontCosts={upfrontCosts} 
                 onUpdateUpfrontCosts={setUpfrontCosts} 
@@ -1099,6 +1167,52 @@ export default function App() {
       }}>
         KPR Smart Dashboard &copy; 2026 - Didesain untuk Skema KPR Perbankan Indonesia.
       </footer>
+
+      {/* Delete-property confirmation dialog */}
+      {deleteConfirmId && (
+        <div
+          onClick={() => setDeleteConfirmId(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="glass-panel animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: '420px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: 'var(--radius-md)', background: 'var(--error-light)', color: 'var(--error)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>Hapus Properti?</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tindakan ini tidak dapat dibatalkan.</span>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Yakin ingin menghapus{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>
+                {properties.find(p => p.id === deleteConfirmId)?.name || 'properti ini'}
+              </strong>
+              ? Semua data simulasi terkait properti ini akan ikut terhapus.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button className="btn btn-secondary" onClick={() => setDeleteConfirmId(null)}>
+                Batal
+              </button>
+              <button
+                className="btn"
+                style={{ background: 'var(--error)', color: '#fff' }}
+                onClick={confirmDeleteProperty}
+              >
+                <Trash2 size={16} />
+                <span>Hapus</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
