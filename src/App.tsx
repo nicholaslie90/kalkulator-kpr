@@ -26,14 +26,16 @@ import {
   DollarSign, 
   Building,
   Download,
-  Upload
+  Upload,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 // Sample mock data for first load
 const SAMPLE_PROPERTIES: PropertyProfile[] = [
   {
     id: 'sample-1',
-    name: 'Cluster Lavender - Kavling B2',
+    name: '[CONTOH] Cluster Lavender - Kavling B2',
     developer: 'Sinar Mas Land',
     picName: 'Rian Wijaya',
     picPhone: '081288887777',
@@ -55,7 +57,7 @@ const SAMPLE_PROPERTIES: PropertyProfile[] = [
   },
   {
     id: 'sample-2',
-    name: 'Metland Residence - Blok C5',
+    name: '[CONTOH] Metland Residence - Blok C5',
     developer: 'Metropolitan Land',
     picName: 'Siti Aminah',
     picPhone: '085699990000',
@@ -102,7 +104,7 @@ const SAMPLE_BANK_SCHEMES: BankScheme[] = [
   {
     id: 'bank-mandiri',
     bankName: 'Bank Mandiri',
-    schemeName: 'Mandiri Tiered Promo',
+    schemeName: '[CONTOH] Mandiri Tiered Promo',
     tenorYears: 15,
     calculationType: 'annuity',
     interestScheme: 'tiered',
@@ -124,7 +126,7 @@ const SAMPLE_BANK_SCHEMES: BankScheme[] = [
   {
     id: 'bank-btn',
     bankName: 'Bank BTN',
-    schemeName: 'BTN Fixed 5 Thn',
+    schemeName: '[CONTOH] BTN Fixed 5 Thn',
     tenorYears: 15,
     calculationType: 'annuity',
     interestScheme: 'fixed',
@@ -304,6 +306,14 @@ export default function App() {
     const savedTab = localStorage.getItem('kpr_active_tab');
     return (savedTab as any) || 'calculator';
   });
+
+  // Sample-data notice: shown while any built-in example data ([CONTOH] prefix) remains.
+  const [sampleNoticeDismissed, setSampleNoticeDismissed] = useState(() => {
+    return localStorage.getItem('kpr_sample_notice_dismissed') === 'true';
+  });
+  const hasSampleData =
+    properties.some(p => p.name.startsWith('[CONTOH]')) ||
+    bankSchemes.some(b => b.schemeName.startsWith('[CONTOH]'));
 
   // Load state from IndexedDB on mount (with auto-seed from kpr-seed.json)
   useEffect(() => {
@@ -845,7 +855,43 @@ export default function App() {
 
         {/* Content Area */}
         <main style={{ flex: 1, padding: '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-          
+
+          {/* Sample-data notice — visible while built-in example data remains */}
+          {hasSampleData && !sampleNoticeDismissed && (
+            <div
+              className="animate-fade-in"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.45)',
+                color: 'var(--text-primary)',
+              }}
+              role="alert"
+            >
+              <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '1px' }} />
+              <div style={{ flex: 1, fontSize: '14px', lineHeight: 1.5 }}>
+                <strong>Ini hanya DATA CONTOH</strong> untuk demonstrasi — bukan data asli.
+                Properti & skema bank yang diberi awalan <code>[CONTOH]</code> adalah ilustrasi.
+                Hapus atau ubah dengan data Anda sendiri; semua data tersimpan lokal di browser ini.
+              </div>
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setSampleNoticeDismissed(true);
+                  localStorage.setItem('kpr_sample_notice_dismissed', 'true');
+                }}
+                aria-label="Tutup pemberitahuan"
+                style={{ padding: '4px', flexShrink: 0, lineHeight: 0 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
+
           {/* Quick stats grid on dashboard tabs */}
           {(activeTab === 'calculator' || activeTab === 'upfront') && (
             <section className="grid-3 animate-fade-in">
