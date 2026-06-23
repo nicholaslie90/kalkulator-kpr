@@ -324,6 +324,12 @@ export default function App() {
     const saved = localStorage.getItem('kpr_appreciation_rate');
     return saved ? JSON.parse(saved) : 5;
   });
+
+  // Penalti pelunasan dipercepat / penjualan lebih awal (% dari sisa pokok)
+  const [earlyPaymentPenalty, setEarlyPaymentPenalty] = useState<number>(() => {
+    const saved = localStorage.getItem('kpr_penalty_percent');
+    return saved ? JSON.parse(saved) : 1;
+  });
   
   // Extra payments keyed by propertyId -> Record<monthNumber, amount>
   const [extraPaymentsByProperty, setExtraPaymentsByProperty] = useState<Record<string, Record<number, number>>>(() => {
@@ -571,6 +577,12 @@ export default function App() {
     localStorage.setItem('kpr_appreciation_rate', JSON.stringify(appreciationRate));
     setDbValue('kpr_appreciation_rate', appreciationRate);
   }, [appreciationRate, isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    localStorage.setItem('kpr_penalty_percent', JSON.stringify(earlyPaymentPenalty));
+    setDbValue('kpr_penalty_percent', earlyPaymentPenalty);
+  }, [earlyPaymentPenalty, isLoading]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -1222,6 +1234,8 @@ export default function App() {
               onSplitConfigChange={setSplitConfig}
               appreciationRate={appreciationRate}
               onAppreciationRateChange={setAppreciationRate}
+              earlyPaymentPenalty={earlyPaymentPenalty}
+              onEarlyPaymentPenaltyChange={setEarlyPaymentPenalty}
             />
           )}
 

@@ -22,6 +22,8 @@ interface AmortizationCalendarProps {
   onSplitConfigChange: (cfg: SplitConfig) => void;
   appreciationRate: number; // % apresiasi/inflasi harga rumah per tahun
   onAppreciationRateChange: (rate: number) => void;
+  earlyPaymentPenalty: number; // % penalti pelunasan dipercepat (dari sisa pokok)
+  onEarlyPaymentPenaltyChange: (rate: number) => void;
 }
 
 export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
@@ -42,6 +44,8 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   onSplitConfigChange,
   appreciationRate,
   onAppreciationRateChange,
+  earlyPaymentPenalty,
+  onEarlyPaymentPenaltyChange,
 }) => {
   const [activeExtraMonth, setActiveExtraMonth] = useState<number | null>(null);
   const [extraVal, setExtraVal] = useState<string>('');
@@ -109,7 +113,9 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   const rSisaPokok = rRow ? rRow.remainingBalance : 0;
   const rTotalKeluar = cumulativeByMonth[rMonth] ?? initialOutflow;
   const rPajakPenjual = (sellerTaxPercent / 100) * rValue;
-  const rNetProceeds = rValue - rPajakPenjual - rSisaPokok; // uang bersih diterima setelah lunasi KPR & pajak
+  // Penalti pelunasan dipercepat: % dari sisa pokok bila menjual sebelum KPR lunas
+  const rPenalti = rSisaPokok > 0 ? (earlyPaymentPenalty / 100) * rSisaPokok : 0;
+  const rNetProceeds = rValue - rPajakPenjual - rSisaPokok - rPenalti; // uang bersih setelah lunasi KPR, pajak & penalti
   const rProfit = rNetProceeds - rTotalKeluar; // dibanding total modal yang sudah keluar
 
   // --- Ekspor data kalender (CSV / Excel / PDF) ---
@@ -121,6 +127,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
     `Modal Awal (DP + Biaya): ${formatRupiah(initialOutflow)}`,
     `Total Bunga: ${formatRupiah(totalInterest)} | Total Cicilan + Bunga: ${formatRupiah(totalPayment)}`,
     `Apresiasi Harga: ${appreciationRate}%/tahun | Alokasi Bunga:Pokok: ${splitConfig.mode === 'fixed' ? `Rasio Tetap ${splitConfig.interestRatio}:${100 - splitConfig.interestRatio}` : 'Otomatis'}`,
+    `Penalti Pelunasan Dipercepat: ${earlyPaymentPenalty}% dari sisa pokok`,
   ];
   const exportHeaders = ['Bulan', 'Tanggal', 'Bunga (%)', 'Cicilan Pokok', 'Cicilan Bunga', 'Bunga:Pokok', 'Total Angsuran', 'Pelunasan Ekstra', 'Sisa Pokok', 'Total Biaya Keluar', 'Estimasi Nilai Rumah'];
   const exportData = schedule.map(row => {
@@ -411,6 +418,21 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               ({rRow?.dateStr || '-'})
             </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Penalti pelunasan dipercepat</span>
+              <div className="input-wrapper" style={{ width: '80px' }}>
+                <input
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  className="input-field input-field-suffixed"
+                  style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                  value={earlyPaymentPenalty || ''}
+                  onChange={(e) => onEarlyPaymentPenaltyChange(Number(e.target.value))}
+                />
+                <span className="input-suffix" style={{ fontSize: '0.72rem' }}>%</span>
+              </div>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
             <div>
@@ -426,6 +448,10 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
               <strong style={{ fontSize: '0.95rem', color: 'var(--error)' }}>{formatRupiah(rSisaPokok)}</strong>
             </div>
             <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>− Penalti Pelunasan ({earlyPaymentPenalty}%)</div>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--warning)' }}>{formatRupiah(rPenalti)}</strong>
+            </div>
+            <div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>− Total Biaya Keluar</div>
               <strong style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{formatRupiah(rTotalKeluar)}</strong>
             </div>
@@ -437,7 +463,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
             </div>
           </div>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '10px' }}>
-            Untung/Rugi = Harga Jual − Pajak Penjual − Sisa Pokok − Total Biaya Keluar. Estimasi harga jual = harga rumah dimajemukkan {appreciationRate}%/tahun.
+            Untung/Rugi = Harga Jual − Pajak Penjual − Sisa Pokok − Penalti Pelunasan − Total Biaya Keluar. Estimasi harga jual = harga rumah dimajemukkan {appreciationRate}%/tahun. Penalti = {earlyPaymentPenalty}% × sisa pokok (umumnya dikenakan jika menjual/melunasi saat masih dalam periode bunga fixed).
           </p>
         </div>
       </div>
