@@ -160,6 +160,15 @@ const DEFAULT_UPFRONT: UpfrontCosts = {
   customFees: [
     { id: 'f1', name: 'Booking Fee (Tanda Jadi)', amount: 5000000 }
   ],
+  // Estimasi biaya transaksi jual-beli / notaris (dapat diedit)
+  sellerTaxPercent: 2.5,
+  ppjbFee: 1000000,
+  skptFee: 200000,
+  ajbFee: 2500000,
+  balikNamaFee: 2000000,
+  pnbpFee: 250000,
+  cekSertifikatFee: 300000,
+  validasiPajakFee: 200000,
 };
 
 const DEFAULT_SCENARIOS: KprScenario[] = [
@@ -703,13 +712,19 @@ export default function App() {
   }
 
   // Chart Data preparation
+  const txValue = upfrontCosts.transactionValue ?? Math.max(0, price - discount);
+  const transactionFeesTotal =
+    (upfrontCosts.ppjbFee ?? 0) + (upfrontCosts.skptFee ?? 0) + (upfrontCosts.ajbFee ?? 0) +
+    (upfrontCosts.balikNamaFee ?? 0) + (upfrontCosts.pnbpFee ?? 0) +
+    (upfrontCosts.cekSertifikatFee ?? 0) + (upfrontCosts.validasiPajakFee ?? 0);
   const donutData = [
     { name: 'Down Payment (DP)', value: dpAmount, color: '#10b981' },
-    { name: 'Pajak BPHTB', value: upfrontCosts.useBphtbAuto ? Math.max(0, (price - discount - upfrontCosts.bphtbNpoptkp) * 0.05) : 0, color: '#f59e0b' },
+    { name: 'Pajak Pembeli (BPHTB)', value: upfrontCosts.useBphtbAuto ? Math.max(0, (txValue - upfrontCosts.bphtbNpoptkp) * 0.05) : 0, color: '#f59e0b' },
     { name: 'Biaya Notaris & APHT', value: ((inputs.notarisPercent || 0) / 100) * plafond, color: '#6366f1' },
     { name: 'Biaya Provisi Bank', value: ((inputs.provisiPercent || 0) / 100) * plafond, color: '#0ea5e9' },
     { name: 'Asuransi KPR', value: ((inputs.asuransiPercent || 0) / 100) * plafond, color: '#ec4899' },
     { name: 'Admin & Appraisal', value: (inputs.adminFee || 0) + (inputs.appraisalFee || 0), color: '#8b5cf6' },
+    { name: 'Biaya Transaksi & Balik Nama', value: transactionFeesTotal, color: '#14b8a6' },
     { name: 'Biaya Lainnya', value: upfrontCosts.customFees.reduce((sum, f) => sum + f.amount, 0), color: '#64748b' }
   ];
 
@@ -1147,8 +1162,9 @@ export default function App() {
             <div className="grid-2 animate-fade-in" style={{ gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr' }}>
               <UpfrontCostsForm 
                 upfrontCosts={upfrontCosts} 
-                onUpdateUpfrontCosts={setUpfrontCosts} 
+                onUpdateUpfrontCosts={setUpfrontCosts}
                 price={price}
+                discount={discount}
                 plafond={plafond}
                 activeBankScheme={inputs}
                 onUpdateBankScheme={(updatedFees) => setBankSchemes(bankSchemes.map(b => b.id === selectedBankSchemeId ? { ...b, ...updatedFees } : b))}
@@ -1174,6 +1190,7 @@ export default function App() {
               bankSchemes={bankSchemes}
               selectedBankSchemeId={selectedBankSchemeId}
               onSelectBankScheme={setSelectedBankSchemeId}
+              initialOutflow={dpAmount + summary.upfrontCostsTotal}
             />
           )}
 

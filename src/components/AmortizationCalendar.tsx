@@ -14,6 +14,7 @@ interface AmortizationCalendarProps {
   bankSchemes: BankScheme[];
   selectedBankSchemeId: string;
   onSelectBankScheme: (id: string) => void;
+  initialOutflow: number; // Modal awal: DP + total biaya akad & transaksi
 }
 
 export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
@@ -27,6 +28,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   bankSchemes,
   selectedBankSchemeId,
   onSelectBankScheme,
+  initialOutflow,
 }) => {
   const [activeExtraMonth, setActiveExtraMonth] = useState<number | null>(null);
   const [extraVal, setExtraVal] = useState<string>('');
@@ -70,6 +72,16 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
     lastPeriod.totalInstallment += row.installment;
     lastPeriod.totalExtra += row.extraPayment;
   });
+
+  // Akumulasi biaya yang sudah keluar per bulan (untuk perhitungan resale).
+  // = Modal Awal (DP + biaya akad/transaksi) + akumulasi angsuran + pelunasan ekstra s/d bulan tsb.
+  const cumulativeByMonth: Record<number, number> = {};
+  let runningOutflow = initialOutflow;
+  schedule.forEach(row => {
+    runningOutflow += row.installment + row.extraPayment;
+    cumulativeByMonth[row.monthNumber] = runningOutflow;
+  });
+  const totalOutflowAtPayoff = runningOutflow;
 
   // Interest saved estimate (rough difference)
   // We can calculate this by running the calculation without extra payments, but since we are displaying the summary cards,
@@ -195,6 +207,23 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
         </div>
       </div>
 
+      {/* Resale Helper */}
+      <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: 'var(--radius-md)', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Modal Awal (DP + Biaya Akad & Transaksi)</span>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>{formatRupiah(initialOutflow)}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Biaya Keluar (s/d Lunas)</span>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)', marginTop: '2px' }}>{formatRupiah(totalOutflowAtPayoff)}</div>
+          </div>
+        </div>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--border-color)' }}>
+          💡 <strong>Estimasi resale:</strong> Untung/Rugi ≈ (Harga Jual − Pajak Penjual − <em>Sisa Pokok</em> pada bulan jual) − <em>Total Biaya Keluar</em> pada bulan tsb. Gunakan kolom <strong>Total Biaya Keluar</strong> & <strong>Sisa Pokok</strong> di tabel di bawah.
+        </p>
+      </div>
+
       {/* Grouped Periods Summary */}
       <div style={{ marginBottom: '24px' }}>
         <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -271,6 +300,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Total Angsuran</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Pelunasan Ekstra</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Sisa Pokok</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Total Biaya Keluar</th>
               </tr>
             </thead>
             <tbody>
@@ -285,7 +315,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                     {/* Rate increase / change warning insertion */}
                     {isRateChanged && (
                       <tr style={{ background: isFloatingJustStarted ? 'var(--error-light)' : 'var(--warning-light)' }}>
-                        <td colSpan={8} style={{ padding: '10px 16px', fontSize: '0.8rem', color: isFloatingJustStarted ? 'var(--error)' : 'var(--warning)', fontWeight: 600 }}>
+                        <td colSpan={9} style={{ padding: '10px 16px', fontSize: '0.8rem', color: isFloatingJustStarted ? 'var(--error)' : 'var(--warning)', fontWeight: 600 }}>
                           ⚠️ Penyesuaian Angsuran: 
                           {isFloatingJustStarted 
                             ? ` Bunga berubah dari Fixed ke Floating (${row.interestRate}%). Cicilan naik dari ${formatRupiah(prevRow.installment)} menjadi ${formatRupiah(row.installment)} (Naik ${pctIncrease}%!).` 
@@ -354,6 +384,9 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                       
                       <td style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--text-secondary)' }}>
                         {formatRupiah(row.remainingBalance)}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                        {formatRupiah(cumulativeByMonth[row.monthNumber])}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -457,6 +490,9 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
 
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
                   Sisa: {formatRupiah(row.remainingBalance)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, textAlign: 'right' }}>
+                  Total Keluar: {formatRupiah(cumulativeByMonth[row.monthNumber])}
                 </div>
               </div>
             );

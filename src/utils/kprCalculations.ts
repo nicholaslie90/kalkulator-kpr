@@ -231,15 +231,28 @@ export const calculateKpr = (
   const notarisCost = (notarisPercent / 100) * plafond;
   const asuransiCost = (asuransiPercent / 100) * plafond;
   
-  // BPHTB: 5% * (NetPrice - NPOPTKP)
+  // Nilai Transaksi untuk perhitungan pajak (default = harga net)
+  const transactionValue = upfrontInputs.transactionValue ?? netPrice;
+
+  // BPHTB / Pajak Pembeli: 5% * (Transaksi - NPOPTKP)
   let bphtbCost = 0;
   if (upfrontInputs.useBphtbAuto) {
-    bphtbCost = Math.max(0, (netPrice - upfrontInputs.bphtbNpoptkp) * 0.05);
+    bphtbCost = Math.max(0, (transactionValue - upfrontInputs.bphtbNpoptkp) * 0.05);
   }
+
+  // Biaya transaksi jual-beli / notaris (fee tetap) — masuk total pembeli
+  const transactionFeesCost =
+    (upfrontInputs.ppjbFee ?? 0) +
+    (upfrontInputs.skptFee ?? 0) +
+    (upfrontInputs.ajbFee ?? 0) +
+    (upfrontInputs.balikNamaFee ?? 0) +
+    (upfrontInputs.pnbpFee ?? 0) +
+    (upfrontInputs.cekSertifikatFee ?? 0) +
+    (upfrontInputs.validasiPajakFee ?? 0);
 
   const customFeesCost = upfrontInputs.customFees.reduce((sum, fee) => sum + fee.amount, 0);
 
-  const upfrontCostsTotal = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + customFeesCost;
+  const upfrontCostsTotal = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + customFeesCost;
   const totalCashNeeded = Math.max(0, dpAmount - bookingFee) + upfrontCostsTotal;
 
   return {

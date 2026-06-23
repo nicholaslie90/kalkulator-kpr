@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import type { UpfrontCosts, CustomFee, BankScheme } from '../utils/types';
 import { formatRupiah } from '../utils/formatters';
+import { CurrencyInput } from './CurrencyInput';
 import { getBphtbFormulaString } from '../utils/kprCalculations';
-import { Trash2, ReceiptText } from 'lucide-react';
+import { Trash2, ReceiptText, FileSignature } from 'lucide-react';
 
 interface UpfrontCostsFormProps {
   upfrontCosts: UpfrontCosts;
   onUpdateUpfrontCosts: (costs: UpfrontCosts) => void;
   price: number;
+  discount?: number;
   plafond: number;
   activeBankScheme: BankScheme;
   onUpdateBankScheme: (scheme: Partial<BankScheme>) => void;
@@ -17,6 +19,7 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
   upfrontCosts,
   onUpdateUpfrontCosts,
   price,
+  discount = 0,
   plafond,
   activeBankScheme,
   onUpdateBankScheme,
@@ -69,15 +72,32 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
   const notarisPercent = activeBankScheme.notarisPercent ?? 0;
   const asuransiPercent = activeBankScheme.asuransiPercent ?? 0;
 
+  // Nilai transaksi (default = harga net) untuk perhitungan pajak jual-beli
+  const netPrice = Math.max(0, price - discount);
+  const transactionValue = upfrontCosts.transactionValue ?? netPrice;
+  const sellerTaxPercent = upfrontCosts.sellerTaxPercent ?? 2.5;
+
+  // Fee transaksi tetap (jual-beli / notaris)
+  const ppjbFee = upfrontCosts.ppjbFee ?? 0;
+  const skptFee = upfrontCosts.skptFee ?? 0;
+  const ajbFee = upfrontCosts.ajbFee ?? 0;
+  const balikNamaFee = upfrontCosts.balikNamaFee ?? 0;
+  const pnbpFee = upfrontCosts.pnbpFee ?? 0;
+  const cekSertifikatFee = upfrontCosts.cekSertifikatFee ?? 0;
+  const validasiPajakFee = upfrontCosts.validasiPajakFee ?? 0;
+
   // Upfront Calculations for display
   const provisiCost = (provisiPercent / 100) * plafond;
   const adminCost = adminFee;
   const appraisalCost = appraisalFee;
   const notarisCost = (notarisPercent / 100) * plafond;
   const asuransiCost = (asuransiPercent / 100) * plafond;
-  const bphtbCost = upfrontCosts.useBphtbAuto ? Math.max(0, (price - upfrontCosts.bphtbNpoptkp) * 0.05) : 0;
+  const bphtbCost = upfrontCosts.useBphtbAuto ? Math.max(0, (transactionValue - upfrontCosts.bphtbNpoptkp) * 0.05) : 0;
+  // Pajak Penjual: info saja, TIDAK masuk total biaya pembeli
+  const sellerTaxCost = (sellerTaxPercent / 100) * transactionValue;
+  const transactionFeesCost = ppjbFee + skptFee + ajbFee + balikNamaFee + pnbpFee + cekSertifikatFee + validasiPajakFee;
   const customFeesCost = upfrontCosts.customFees.reduce((sum, f) => sum + f.amount, 0);
-  const totalAkadCost = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + customFeesCost;
+  const totalAkadCost = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + customFeesCost;
 
   return (
     <div className="glass-panel" style={{ padding: '24px' }}>
@@ -175,11 +195,10 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
             </div>
             <div className="input-wrapper">
               <span className="input-prefix">Rp</span>
-              <input
-                type="text"
+              <CurrencyInput
                 className="input-field input-field-prefixed"
-                value={adminFee.toLocaleString('id-ID')}
-                onChange={(e) => handleFieldChange('adminFee', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                value={adminFee}
+                onValueChange={(n) => handleFieldChange('adminFee', n)}
               />
             </div>
           </div>
@@ -190,11 +209,10 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
           <label className="input-label">Biaya Appraisal (Penilaian Agunan)</label>
           <div className="input-wrapper">
             <span className="input-prefix">Rp</span>
-            <input
-              type="text"
+            <CurrencyInput
               className="input-field input-field-prefixed"
-              value={appraisalFee.toLocaleString('id-ID')}
-              onChange={(e) => handleFieldChange('appraisalFee', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+              value={appraisalFee}
+              onValueChange={(n) => handleFieldChange('appraisalFee', n)}
             />
           </div>
         </div>
@@ -221,28 +239,27 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
           {upfrontCosts.useBphtbAuto ? (
             <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="input-group" style={{ marginBottom: 0 }}>
-                <label className="input-label" style={{ fontSize: '0.75rem' }}>NPOPTKP Daerah (Pengurangan Pajak)</label>
+                <label className="input-label" style={{ fontSize: '0.75rem' }}>Pengurang Pajak (NPOPTKP)</label>
                 <div className="input-wrapper">
                   <span className="input-prefix">Rp</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     className="input-field input-field-prefixed"
                     style={{ padding: '8px 12px 8px 42px', fontSize: '0.9rem' }}
-                    value={upfrontCosts.bphtbNpoptkp.toLocaleString('id-ID')}
-                    onChange={(e) => handleFieldChange('bphtbNpoptkp', Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                    value={upfrontCosts.bphtbNpoptkp}
+                    onValueChange={(n) => handleFieldChange('bphtbNpoptkp', n)}
                   />
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  * Umumnya Rp 60jt (nasional) atau Rp 80jt (DKI Jakarta/Jawa Barat/daerah tertentu).
+                  * Umumnya Rp 60jt (nasional) / Rp 80jt (DKI, Jabar). Isi Rp 250jt bila skema pajak Anda memakai pengurang tersebut.
                 </span>
               </div>
               <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '10px', fontSize: '0.85rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Rumus Pajak BPHTB</span>
-                  <span style={{ color: 'var(--text-muted)' }}>5% x (Harga - NPOPTKP)</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Rumus Pajak Pembeli (BPHTB)</span>
+                  <span style={{ color: 'var(--text-muted)' }}>5% x (Transaksi - Pengurang)</span>
                 </div>
                 <div style={{ color: 'var(--primary)', fontWeight: 600, marginTop: '4px' }}>
-                  Detail: {getBphtbFormulaString(price, upfrontCosts.bphtbNpoptkp)}
+                  Detail: {getBphtbFormulaString(transactionValue, upfrontCosts.bphtbNpoptkp)}
                 </div>
               </div>
             </div>
@@ -251,6 +268,102 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
               Pajak BPHTB tidak dimasukkan ke dalam kalkulasi awal. Anda dapat menonaktifkan BPHTB jika biaya pajak ditanggung penjual / promo developer.
             </p>
           )}
+        </div>
+
+        {/* Biaya Transaksi Jual-Beli, Notaris & Balik Nama */}
+        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <FileSignature size={18} style={{ color: 'var(--primary)' }} />
+            <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Biaya Transaksi, Notaris & Balik Nama</strong>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+            Biaya proses jual-beli & balik nama sertifikat. Nilai di bawah adalah estimasi — sesuaikan dengan penawaran notaris/PPAT Anda.
+          </p>
+
+          {/* Nilai Transaksi */}
+          <div className="input-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="input-label">Nilai Transaksi (Dasar Pajak)</label>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: '0.7rem', padding: '2px 8px', color: 'var(--primary)' }}
+                onClick={() => handleFieldChange('transactionValue', netPrice)}
+              >
+                Pakai Harga Net ({formatRupiah(netPrice)})
+              </button>
+            </div>
+            <div className="input-wrapper">
+              <span className="input-prefix">Rp</span>
+              <CurrencyInput
+                className="input-field input-field-prefixed"
+                placeholder={netPrice.toLocaleString('id-ID')}
+                value={transactionValue}
+                onValueChange={(n) => handleFieldChange('transactionValue', n)}
+              />
+            </div>
+          </div>
+
+          {/* Pajak Penjual — info, tidak masuk total */}
+          <div style={{ background: 'var(--warning-light)', border: '1px solid rgba(245,158,11,0.3)', padding: '12px 14px', borderRadius: 'var(--radius-md)', marginTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <strong style={{ fontSize: '0.85rem' }}>Pajak Penjual (PPh Final)</strong>
+                  <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Ditanggung Penjual</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                  <div className="input-wrapper" style={{ width: '90px' }}>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="input-field input-field-suffixed"
+                      style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                      value={sellerTaxPercent || ''}
+                      onChange={(e) => handleFieldChange('sellerTaxPercent', Number(e.target.value))}
+                    />
+                    <span className="input-suffix" style={{ fontSize: '0.7rem' }}>%</span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>x Nilai Transaksi</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <strong style={{ fontSize: '1rem', color: 'var(--warning)' }}>{formatRupiah(sellerTaxCost)}</strong>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>tidak masuk total pembeli</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 7 fee tetap */}
+          <div className="grid-2" style={{ marginTop: '14px', gap: '12px' }}>
+            {([
+              { field: 'ppjbFee', label: 'Pengikatan Jual Beli (PPJB)', value: ppjbFee },
+              { field: 'skptFee', label: 'Pengecekan SKPT', value: skptFee },
+              { field: 'ajbFee', label: 'Akta Jual Beli (AJB)', value: ajbFee },
+              { field: 'balikNamaFee', label: 'Balik Nama (BBN)', value: balikNamaFee },
+              { field: 'pnbpFee', label: 'PNBP', value: pnbpFee },
+              { field: 'cekSertifikatFee', label: 'Cek & Validasi Sertifikat + Cek Zona', value: cekSertifikatFee },
+              { field: 'validasiPajakFee', label: 'Validasi Pajak Pembeli', value: validasiPajakFee },
+            ] as const).map(item => (
+              <div className="input-group" key={item.field} style={{ marginBottom: 0 }}>
+                <label className="input-label" style={{ fontSize: '0.78rem' }}>{item.label}</label>
+                <div className="input-wrapper">
+                  <span className="input-prefix">Rp</span>
+                  <CurrencyInput
+                    className="input-field input-field-prefixed"
+                    placeholder="0"
+                    value={item.value}
+                    onValueChange={(n) => handleFieldChange(item.field, n)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed var(--border-color)', fontSize: '0.85rem' }}>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Subtotal Biaya Transaksi & Notaris</span>
+            <strong style={{ color: 'var(--primary)' }}>{formatRupiah(transactionFeesCost + bphtbCost)}</strong>
+          </div>
         </div>
 
         {/* Custom Fees Section */}
@@ -289,13 +402,12 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
             />
             <div className="input-wrapper" style={{ flex: 1.5 }}>
               <span className="input-prefix" style={{ fontSize: '0.8rem' }}>Rp</span>
-              <input
-                type="text"
+              <CurrencyInput
                 placeholder="Nominal"
                 className="input-field input-field-prefixed"
                 style={{ padding: '8px 12px 8px 32px', fontSize: '0.85rem' }}
-                value={newFeeAmount === 0 ? '' : newFeeAmount.toLocaleString('id-ID')}
-                onChange={(e) => setNewFeeAmount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                value={newFeeAmount}
+                onValueChange={(n) => setNewFeeAmount(n)}
               />
             </div>
             <button type="submit" className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>

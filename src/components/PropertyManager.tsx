@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { PropertyProfile } from '../utils/types';
 import { formatRupiah } from '../utils/formatters';
+import { CurrencyInput } from './CurrencyInput';
 import { Plus, Trash2, Edit2, User, Phone, Building, ArrowRight, Info, Bed, Bath, Car, Copy } from 'lucide-react';
 
 interface PropertyManagerProps {
@@ -319,12 +320,11 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
                 <label className="input-label">Harga Rumah (Rp) *</label>
                 <div className="input-wrapper">
                   <span className="input-prefix">Rp</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     className="input-field input-field-prefixed"
                     placeholder="Harga Jual"
-                    value={price.toLocaleString('id-ID')}
-                    onChange={(e) => handlePriceChange(e.target.value)}
+                    value={price}
+                    onValueChange={(n) => handlePriceChange(String(n))}
                     required
                   />
                 </div>
@@ -347,12 +347,11 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
                   </div>
                   <div className="input-wrapper" style={{ flex: 2 }}>
                     <span className="input-prefix">Rp</span>
-                    <input
-                      type="text"
+                    <CurrencyInput
                       className="input-field input-field-prefixed"
                       placeholder="Nominal"
-                      value={discount.toLocaleString('id-ID')}
-                      onChange={(e) => handleDiscountChange(e.target.value)}
+                      value={discount}
+                      onValueChange={(n) => handleDiscountChange(String(n))}
                     />
                   </div>
                 </div>
@@ -387,12 +386,11 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
                 <label className="input-label">Booking Fee (Uang Tanda Jadi) (Rp)</label>
                 <div className="input-wrapper">
                   <span className="input-prefix">Rp</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     className="input-field input-field-prefixed"
                     placeholder="Contoh: 5.000.000"
-                    value={bookingFee.toLocaleString('id-ID')}
-                    onChange={(e) => setBookingFee(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                    value={bookingFee}
+                    onValueChange={(n) => setBookingFee(n)}
                   />
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>

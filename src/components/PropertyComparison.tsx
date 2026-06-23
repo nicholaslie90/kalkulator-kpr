@@ -59,11 +59,7 @@ export const PropertyComparison: React.FC<PropertyComparisonProps> = ({
 
   if (activeProp && bankSchemes.length > 0) {
     bankSchemes.forEach(scheme => {
-      const schemeUpfrontCosts = {
-        useBphtbAuto: upfrontCosts.useBphtbAuto,
-        bphtbNpoptkp: upfrontCosts.bphtbNpoptkp,
-        customFees: upfrontCosts.customFees,
-      };
+      const schemeUpfrontCosts = { ...upfrontCosts };
       const calc = calculateKpr(
         activeProp.price,
         activeProp.dpAmount,
@@ -502,11 +498,7 @@ export const PropertyComparison: React.FC<PropertyComparisonProps> = ({
               </thead>
               <tbody>
                 {bankSchemes.map(scheme => {
-                  const schemeUpfrontCosts = {
-                    useBphtbAuto: upfrontCosts.useBphtbAuto,
-                    bphtbNpoptkp: upfrontCosts.bphtbNpoptkp,
-                    customFees: upfrontCosts.customFees,
-                  };
+                  const schemeUpfrontCosts = { ...upfrontCosts };
                   
                   const calc = calculateKpr(
                     activeProp.price,

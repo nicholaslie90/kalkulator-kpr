@@ -64,6 +64,17 @@ export interface UpfrontCosts {
   useBphtbAuto: boolean;
   bphtbNpoptkp: number; // Default Rp 60,000,000
   customFees: CustomFee[];
+
+  // Biaya transaksi jual-beli / notaris (semua optional → backward-compatible)
+  transactionValue?: number; // Nilai Transaksi; default = harga net (price - discount)
+  sellerTaxPercent?: number; // Pajak Penjual % (default 2.5) — info, tidak masuk total pembeli
+  ppjbFee?: number; // Pengikatan Jual Beli (PPJB)
+  skptFee?: number; // Pengecekan SKPT
+  ajbFee?: number; // Akta Jual Beli (AJB)
+  balikNamaFee?: number; // Balik Nama (BBN)
+  pnbpFee?: number; // PNBP
+  cekSertifikatFee?: number; // Cek sertifikat, validasi & cek zona
+  validasiPajakFee?: number; // Validasi Pajak Pembeli
 }
 
 export interface AmortizationRow {
