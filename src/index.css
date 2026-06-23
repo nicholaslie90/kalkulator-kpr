@@ -328,6 +328,98 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Tiered (Fixed Berjenjang) Row */
+.tier-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--bg-secondary);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.tier-num {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--bg-tertiary);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tier-inputs {
+  display: flex;
+  gap: 12px;
+  flex: 4;
+}
+
+.tier-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.tier-field-label {
+  display: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.tier-input {
+  padding: 8px 34px 8px 12px;
+  font-size: 0.85rem;
+}
+
+.tier-range {
+  flex: 3;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.tier-delete {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .tier-row {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  /* Baris 1: nomor jenjang + tombol hapus */
+  .tier-num { order: 1; }
+  .tier-delete { order: 2; margin-left: auto; }
+
+  /* Baris 2: kedua input berdampingan, masing-masing setengah lebar */
+  .tier-inputs {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .tier-field-label { display: block; }
+
+  .tier-input {
+    padding: 12px 38px 12px 14px;
+    font-size: 1rem;
+  }
+
+  /* Baris 3: keterangan rentang tahun */
+  .tier-range {
+    order: 4;
+    flex-basis: 100%;
+  }
+}
+
 /* Badge Styles */
 .badge {
   display: inline-flex;

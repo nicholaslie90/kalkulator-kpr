@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import type { BankScheme, InterestTier, CalculationType, InterestScheme } from '../utils/types';
 import { Plus, Trash2, Copy, GripVertical } from 'lucide-react';
 
+// Tampilkan kosong untuk nilai 0/NaN supaya tidak ada "0" yang menempel di depan input
+const displayNum = (n: number): number | string => (n === 0 || isNaN(n) ? '' : n);
+
+// Buang nol di depan ("05" -> "5", "00.5" -> "0.5") lalu jadikan angka
+const parseNum = (raw: string): number => {
+  const cleaned = raw.replace(/^0+(?=\d)/, '');
+  return cleaned === '' ? 0 : Number(cleaned);
+};
+
 interface KprCalculatorFormProps {
   bankSchemes: BankScheme[];
   selectedBankSchemeId: string | null;
@@ -474,14 +483,11 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
               <div className="input-wrapper">
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   className="input-field input-field-suffixed"
-                  value={activeScheme.fixedRate}
-                  onChange={(e) => handleFieldChange('fixedRate', Number(e.target.value))}
-                  onBlur={(e) => {
-                    const parsed = parseFloat(e.target.value);
-                    if (!isNaN(parsed)) e.target.value = String(parsed);
-                  }}
+                  value={displayNum(activeScheme.fixedRate)}
+                  onChange={(e) => handleFieldChange('fixedRate', parseNum(e.target.value))}
                 />
                 <span className="input-suffix">%</span>
               </div>
@@ -491,6 +497,7 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
               <div className="input-wrapper">
                 <input
                   type="number"
+                  inputMode="numeric"
                   className="input-field input-field-suffixed"
                   min="1"
                   max={activeScheme.tenorYears}
@@ -498,8 +505,8 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
                     borderColor: isFixedOverTenor ? 'var(--error)' : 'var(--border-color)',
                     boxShadow: isFixedOverTenor ? '0 0 0 1px var(--error)' : 'none'
                   }}
-                  value={activeScheme.fixedYears || ''}
-                  onChange={(e) => handleFieldChange('fixedYears', parseInt(e.target.value, 10) || 0)}
+                  value={displayNum(activeScheme.fixedYears)}
+                  onChange={(e) => handleFieldChange('fixedYears', Math.trunc(parseNum(e.target.value)))}
                 />
                 <span className="input-suffix">Tahun</span>
               </div>
@@ -542,60 +549,60 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
               const endYear = prevYears + tier.durationYears;
 
               return (
-                <div key={tier.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--bg-secondary)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '28px', height: '28px', background: 'var(--bg-tertiary)', borderRadius: '50%', fontSize: '0.8rem', fontWeight: 700 }}>
+                <div key={tier.id} className="tier-row">
+                  <div className="tier-num">
                     {index + 1}
                   </div>
-                  
-                  <div style={{ flex: 2 }}>
-                    <div className="input-wrapper">
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="Suku Bunga"
-                        className="input-field input-field-suffixed"
-                        style={{ padding: '8px 32px 8px 12px', fontSize: '0.85rem' }}
-                        value={tier.rate}
-                        onChange={(e) => handleTierChange(tier.id, 'rate', Number(e.target.value))}
-                        onBlur={(e) => {
-                          const parsed = parseFloat(e.target.value);
-                          if (!isNaN(parsed)) e.target.value = String(parsed);
-                        }}
-                      />
-                      <span className="input-suffix" style={{ right: '8px', fontSize: '0.8rem' }}>%</span>
+
+                  <div className="tier-inputs">
+                    <div className="tier-field">
+                      <span className="tier-field-label">Suku Bunga</span>
+                      <div className="input-wrapper">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.01"
+                          placeholder="0"
+                          className="input-field input-field-suffixed tier-input"
+                          value={displayNum(tier.rate)}
+                          onChange={(e) => handleTierChange(tier.id, 'rate', parseNum(e.target.value))}
+                        />
+                        <span className="input-suffix" style={{ right: '10px', fontSize: '0.8rem' }}>%</span>
+                      </div>
+                    </div>
+
+                    <div className="tier-field">
+                      <span className="tier-field-label">Durasi</span>
+                      <div className="input-wrapper">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          placeholder="0"
+                          className="input-field input-field-suffixed tier-input"
+                          style={{
+                            borderColor: isTieredOverTenor ? 'var(--error)' : 'var(--border-color)',
+                            boxShadow: isTieredOverTenor ? '0 0 0 1px var(--error)' : 'none'
+                          }}
+                          value={displayNum(tier.durationYears)}
+                          onChange={(e) => handleTierChange(tier.id, 'durationYears', Math.trunc(parseNum(e.target.value)))}
+                        />
+                        <span className="input-suffix" style={{ right: '10px', fontSize: '0.8rem' }}>Thn</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ flex: 2 }}>
-                    <div className="input-wrapper">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Tenor"
-                        className="input-field input-field-suffixed"
-                        style={{ 
-                          padding: '8px 32px 8px 12px', 
-                          fontSize: '0.85rem',
-                          borderColor: isTieredOverTenor ? 'var(--error)' : 'var(--border-color)',
-                          boxShadow: isTieredOverTenor ? '0 0 0 1px var(--error)' : 'none'
-                        }}
-                        value={tier.durationYears || ''}
-                        onChange={(e) => handleTierChange(tier.id, 'durationYears', parseInt(e.target.value, 10) || 0)}
-                      />
-                      <span className="input-suffix" style={{ right: '8px', fontSize: '0.8rem' }}>Thn</span>
-                    </div>
-                  </div>
-
-                  <div style={{ flex: 3, fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  <div className="tier-range">
                     Tahun ke-{startYear} s/d {endYear}
                   </div>
 
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn btn-ghost tier-delete"
                     style={{ padding: '6px', color: 'var(--error)' }}
                     onClick={() => handleRemoveTier(tier.id)}
                     disabled={activeScheme.tieredTiers.length <= 1}
+                    title="Hapus jenjang"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -635,14 +642,11 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
           <div className="input-wrapper">
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               className="input-field input-field-suffixed"
-              value={activeScheme.floatingRate}
-              onChange={(e) => handleFieldChange('floatingRate', Number(e.target.value))}
-              onBlur={(e) => {
-                const parsed = parseFloat(e.target.value);
-                if (!isNaN(parsed)) e.target.value = String(parsed);
-              }}
+              value={displayNum(activeScheme.floatingRate)}
+              onChange={(e) => handleFieldChange('floatingRate', parseNum(e.target.value))}
             />
             <span className="input-suffix">%</span>
           </div>
