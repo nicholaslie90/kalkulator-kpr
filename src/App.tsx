@@ -19,9 +19,10 @@ import {
   Receipt, 
   CalendarDays, 
   GitCompare, 
-  Sun, 
-  Moon, 
-  TrendingUp, 
+  Sun,
+  Moon,
+  Monitor,
+  TrendingUp,
   TrendingDown, 
   DollarSign, 
   Building,
@@ -32,6 +33,11 @@ import {
   Menu,
   Trash2
 } from 'lucide-react';
+
+// Theme preference type + guard. Persisted in localStorage/IndexedDB under 'kpr_theme'.
+type ThemePref = 'light' | 'dark' | 'system';
+const isThemePref = (v: unknown): v is ThemePref =>
+  v === 'light' || v === 'dark' || v === 'system';
 
 // Sample mock data for first load
 const SAMPLE_PROPERTIES: PropertyProfile[] = [
@@ -252,10 +258,11 @@ function LoadingScreen() {
 export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Theme state (default dark for premium look)
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
+  // Theme preference: 'light' | 'dark' | 'system' (default dark for premium look).
+  // 'system' follows the OS color scheme via prefers-color-scheme.
+  const [themePref, setThemePref] = useState<ThemePref>(() => {
     const saved = localStorage.getItem('kpr_theme');
-    return saved ? saved === 'dark' : true;
+    return isThemePref(saved) ? saved : 'dark';
   });
   
   // App States
@@ -374,7 +381,7 @@ export default function App() {
                 const seededTab = await getDbValue('kpr_active_tab', 'calculator');
                 setActiveTab(seededTab as any);
                 const seededTheme = await getDbValue('kpr_theme', 'dark');
-                setDarkMode(seededTheme === 'dark');
+                setThemePref(isThemePref(seededTheme) ? seededTheme : 'dark');
                 console.log('✅ Auto-seed complete!');
                 return; // Skip the normal load flow
               }
@@ -484,11 +491,11 @@ export default function App() {
 
         // Load theme
         const savedTheme = await getDbValue('kpr_theme', null);
-        if (savedTheme) {
-          setDarkMode(savedTheme === 'dark');
+        if (isThemePref(savedTheme)) {
+          setThemePref(savedTheme);
         } else {
           const localTheme = localStorage.getItem('kpr_theme');
-          if (localTheme) setDarkMode(localTheme === 'dark');
+          if (isThemePref(localTheme)) setThemePref(localTheme);
         }
       } catch (err) {
         console.error("Failed to load initial KPR states from database:", err);
@@ -552,17 +559,27 @@ export default function App() {
     setDbValue('kpr_active_tab', activeTab);
   }, [activeTab, isLoading]);
 
-  // Toggle Dark Mode
+  // Apply theme: resolve 'system' against the OS color scheme and toggle the .dark class.
+  // When following the system, re-resolve live as the OS preference changes.
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const isDark = themePref === 'dark' || (themePref === 'system' && mq.matches);
+      document.documentElement.classList.toggle('dark', isDark);
+    };
+    apply();
+    if (themePref === 'system') {
+      mq.addEventListener('change', apply);
+      return () => mq.removeEventListener('change', apply);
     }
+  }, [themePref]);
+
+  // Persist theme preference.
+  useEffect(() => {
     if (isLoading) return;
-    localStorage.setItem('kpr_theme', darkMode ? 'dark' : 'light');
-    setDbValue('kpr_theme', darkMode ? 'dark' : 'light');
-  }, [darkMode, isLoading]);
+    localStorage.setItem('kpr_theme', themePref);
+    setDbValue('kpr_theme', themePref);
+  }, [themePref, isLoading]);
 
   // === Data Export / Import Handlers ===
   const handleExportData = async () => {
@@ -793,21 +810,13 @@ export default function App() {
             >
               <Download size={16} />
             </button>
-            <button 
-              className="btn btn-secondary" 
+            <button
+              className="btn btn-secondary"
               style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
               onClick={handleImportData}
               title="Import data dari JSON"
             >
               <Upload size={16} />
-            </button>
-            <button 
-              className="btn btn-secondary" 
-              style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
-              onClick={() => setDarkMode(!darkMode)}
-              title={darkMode ? 'Light Mode' : 'Dark Mode'}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
         </div>
@@ -904,22 +913,69 @@ export default function App() {
             </button>
           </div>
 
-          {/* Quick active property summary footer in sidebar */}
-          {activeProperty && (
-            <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
-                <Building size={14} />
-                <span>{activeProperty.houseType || 'Properti Aktif'}</span>
+          {/* Sidebar footer: active property summary + theme switcher */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {activeProperty && (
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
+                  <Building size={14} />
+                  <span>{activeProperty.houseType || 'Properti Aktif'}</span>
+                </div>
+                <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeProperty.name}
+                </strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Cicilan Awal:</span>
+                  <strong style={{ color: 'var(--primary)' }}>{formatRupiah(summary.monthlyInstallmentInitial)}</strong>
+                </div>
               </div>
-              <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {activeProperty.name}
-              </strong>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Cicilan Awal:</span>
-                <strong style={{ color: 'var(--primary)' }}>{formatRupiah(summary.monthlyInstallmentInitial)}</strong>
+            )}
+
+            {/* Theme switcher: Light / System / Dark */}
+            <div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', paddingLeft: '2px' }}>
+                Tampilan
+              </span>
+              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '4px' }}>
+                {([
+                  { key: 'light', label: 'Terang', icon: Sun },
+                  { key: 'system', label: 'Sistem', icon: Monitor },
+                  { key: 'dark', label: 'Gelap', icon: Moon },
+                ] as const).map(opt => {
+                  const Icon = opt.icon;
+                  const active = themePref === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setThemePref(opt.key)}
+                      title={opt.label}
+                      aria-pressed={active}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '8px 4px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: active ? 'var(--primary)' : 'transparent',
+                        color: active ? '#fff' : 'var(--text-secondary)',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      <Icon size={16} />
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
         </aside>
         )}
 
