@@ -77,6 +77,11 @@ export interface UpfrontCosts {
   validasiPajakFee?: number; // Validasi Pajak Pembeli
 }
 
+export interface SplitConfig {
+  mode: 'auto' | 'fixed'; // 'auto' = anuitas/efektif/flat; 'fixed' = rasio bunga:pokok tetap
+  interestRatio: number; // % dari cicilan yang dialokasikan ke bunga (mis. 80 → 80:20)
+}
+
 export interface AmortizationRow {
   monthNumber: number;
   dateStr: string;

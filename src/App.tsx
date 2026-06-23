@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { PropertyProfile, UpfrontCosts, KprScenario, BankScheme } from './utils/types';
+import type { PropertyProfile, UpfrontCosts, KprScenario, BankScheme, SplitConfig } from './utils/types';
 import { calculateKpr } from './utils/kprCalculations';
 import { formatRupiah } from './utils/formatters';
 import { getDbValue, setDbValue, exportAllData, importAllData } from './utils/localDb';
@@ -312,6 +312,18 @@ export default function App() {
     const saved = localStorage.getItem('kpr_scenarios');
     return saved ? JSON.parse(saved) : DEFAULT_SCENARIOS;
   });
+
+  // Konfigurasi alokasi bunga:pokok untuk Kalender Cicilan
+  const [splitConfig, setSplitConfig] = useState<SplitConfig>(() => {
+    const saved = localStorage.getItem('kpr_split_config');
+    return saved ? JSON.parse(saved) : { mode: 'auto', interestRatio: 80 };
+  });
+
+  // Estimasi apresiasi/inflasi harga rumah per tahun (%) untuk proyeksi nilai jual
+  const [appreciationRate, setAppreciationRate] = useState<number>(() => {
+    const saved = localStorage.getItem('kpr_appreciation_rate');
+    return saved ? JSON.parse(saved) : 5;
+  });
   
   // Extra payments keyed by propertyId -> Record<monthNumber, amount>
   const [extraPaymentsByProperty, setExtraPaymentsByProperty] = useState<Record<string, Record<number, number>>>(() => {
@@ -550,6 +562,18 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
+    localStorage.setItem('kpr_split_config', JSON.stringify(splitConfig));
+    setDbValue('kpr_split_config', splitConfig);
+  }, [splitConfig, isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    localStorage.setItem('kpr_appreciation_rate', JSON.stringify(appreciationRate));
+    setDbValue('kpr_appreciation_rate', appreciationRate);
+  }, [appreciationRate, isLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
     localStorage.setItem('kpr_scenarios', JSON.stringify(scenarios));
     setDbValue('kpr_scenarios', scenarios);
   }, [scenarios, isLoading]);
@@ -700,7 +724,7 @@ export default function App() {
   const bookingFee = activeProperty ? (activeProperty.bookingFee || 0) : 0;
   const plafond = Math.max(0, price - discount - dpAmount);
 
-  const summary = calculateKpr(price, dpAmount, inputs, upfrontCosts, activeExtras, discount, bookingFee);
+  const summary = calculateKpr(price, dpAmount, inputs, upfrontCosts, activeExtras, discount, bookingFee, splitConfig);
 
   // Total fixed months for chart drawing
   let totalFixedMonths = 0;
@@ -995,7 +1019,7 @@ export default function App() {
         )}
 
         {/* Content Area */}
-        <main style={{ flex: 1, padding: isMobile ? '16px' : '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px', margin: '0 auto', width: '100%', minWidth: 0 }}>
+        <main style={{ flex: 1, padding: isMobile ? '16px' : '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', minWidth: 0 }}>
 
           {/* Sample-data notice — visible while built-in example data remains */}
           {hasSampleData && !sampleNoticeDismissed && (
@@ -1191,6 +1215,12 @@ export default function App() {
               selectedBankSchemeId={selectedBankSchemeId}
               onSelectBankScheme={setSelectedBankSchemeId}
               initialOutflow={dpAmount + summary.upfrontCostsTotal}
+              propertyPrice={price}
+              sellerTaxPercent={upfrontCosts.sellerTaxPercent ?? 2.5}
+              splitConfig={splitConfig}
+              onSplitConfigChange={setSplitConfig}
+              appreciationRate={appreciationRate}
+              onAppreciationRateChange={setAppreciationRate}
             />
           )}
 

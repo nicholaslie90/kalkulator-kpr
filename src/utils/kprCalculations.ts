@@ -1,8 +1,9 @@
-import type { 
-  KprInputs, 
-  UpfrontCosts, 
-  AmortizationRow, 
-  CalculationSummary
+import type {
+  KprInputs,
+  UpfrontCosts,
+  AmortizationRow,
+  CalculationSummary,
+  SplitConfig
 } from './types';
 import { formatMonthYear } from './formatters';
 
@@ -58,7 +59,8 @@ export const calculateKpr = (
   upfrontInputs: UpfrontCosts,
   extraPayments: Record<number, number> = {}, // monthNumber -> amount
   discount: number = 0,
-  bookingFee: number = 0
+  bookingFee: number = 0,
+  splitConfig: SplitConfig = { mode: 'auto', interestRatio: 80 }
 ): CalculationSummary => {
   const netPrice = Math.max(0, price - discount);
   const plafond = Math.max(0, netPrice - dpAmount);
@@ -163,6 +165,14 @@ export const calculateKpr = (
         interestPayment = remainingBalance > 0 ? (plafond * monthlyRate) : 0;
         installment = principalPayment + interestPayment;
       }
+    }
+
+    // Override alokasi bunga:pokok dengan rasio tetap (mis. 80:20) bila diaktifkan.
+    // Nilai cicilan tetap; hanya proporsi bunga vs pokok yang dipaksa.
+    if (splitConfig.mode === 'fixed' && installment > 0) {
+      const ratio = Math.min(100, Math.max(0, splitConfig.interestRatio)) / 100;
+      interestPayment = installment * ratio;
+      principalPayment = installment - interestPayment;
     }
 
     // Capture initial and floating installment examples for dashboard display

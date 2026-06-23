@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { AmortizationRow, BankScheme } from '../utils/types';
+import type { AmortizationRow, BankScheme, SplitConfig } from '../utils/types';
 import { formatRupiah } from '../utils/formatters';
-import { Plus, X, Check, Timer } from 'lucide-react';
+import { Plus, X, Check, Timer, SlidersHorizontal, TrendingUp } from 'lucide-react';
 
 interface AmortizationCalendarProps {
   schedule: AmortizationRow[];
@@ -15,6 +15,12 @@ interface AmortizationCalendarProps {
   selectedBankSchemeId: string;
   onSelectBankScheme: (id: string) => void;
   initialOutflow: number; // Modal awal: DP + total biaya akad & transaksi
+  propertyPrice: number; // Harga rumah saat ini (basis proyeksi nilai)
+  sellerTaxPercent: number; // Pajak penjual % (untuk estimasi untung/rugi jual)
+  splitConfig: SplitConfig;
+  onSplitConfigChange: (cfg: SplitConfig) => void;
+  appreciationRate: number; // % apresiasi/inflasi harga rumah per tahun
+  onAppreciationRateChange: (rate: number) => void;
 }
 
 export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
@@ -29,10 +35,21 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   selectedBankSchemeId,
   onSelectBankScheme,
   initialOutflow,
+  propertyPrice,
+  sellerTaxPercent,
+  splitConfig,
+  onSplitConfigChange,
+  appreciationRate,
+  onAppreciationRateChange,
 }) => {
   const [activeExtraMonth, setActiveExtraMonth] = useState<number | null>(null);
   const [extraVal, setExtraVal] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [resaleMonth, setResaleMonth] = useState<number>(36);
+
+  // Proyeksi nilai rumah pada bulan ke-m (dimajemukkan per tahun).
+  const projectedValue = (monthNumber: number) =>
+    propertyPrice * Math.pow(1 + appreciationRate / 100, (monthNumber - 1) / 12);
 
   const handleSaveExtra = (month: number) => {
     const num = parseInt(extraVal.replace(/[^0-9]/g, ''), 10);
@@ -82,6 +99,16 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
     cumulativeByMonth[row.monthNumber] = runningOutflow;
   });
   const totalOutflowAtPayoff = runningOutflow;
+
+  // Estimasi untung/rugi jual pada bulan terpilih
+  const rMonth = Math.min(Math.max(1, resaleMonth || 1), schedule.length);
+  const rRow = schedule[rMonth - 1];
+  const rValue = projectedValue(rMonth);
+  const rSisaPokok = rRow ? rRow.remainingBalance : 0;
+  const rTotalKeluar = cumulativeByMonth[rMonth] ?? initialOutflow;
+  const rPajakPenjual = (sellerTaxPercent / 100) * rValue;
+  const rNetProceeds = rValue - rPajakPenjual - rSisaPokok; // uang bersih diterima setelah lunasi KPR & pajak
+  const rProfit = rNetProceeds - rTotalKeluar; // dibanding total modal yang sudah keluar
 
   // Interest saved estimate (rough difference)
   // We can calculate this by running the calculation without extra payments, but since we are displaying the summary cards,
@@ -170,6 +197,78 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
         </div>
       </div>
 
+      {/* Pengaturan Alokasi Bunga:Pokok & Apresiasi Harga */}
+      <div className="grid-2" style={{ gap: '16px', marginBottom: '20px' }}>
+        {/* Rasio Bunga:Pokok */}
+        <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <SlidersHorizontal size={16} style={{ color: 'var(--primary)' }} />
+            <strong style={{ fontSize: '0.9rem' }}>Alokasi Cicilan: Bunga : Pokok</strong>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+            <button
+              className="btn"
+              style={{ flex: 1, fontSize: '0.78rem', padding: '6px 10px', background: splitConfig.mode === 'auto' ? 'var(--primary)' : 'var(--bg-secondary)', color: splitConfig.mode === 'auto' ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              onClick={() => onSplitConfigChange({ ...splitConfig, mode: 'auto' })}
+            >
+              Otomatis (Anuitas/Efektif)
+            </button>
+            <button
+              className="btn"
+              style={{ flex: 1, fontSize: '0.78rem', padding: '6px 10px', background: splitConfig.mode === 'fixed' ? 'var(--primary)' : 'var(--bg-secondary)', color: splitConfig.mode === 'fixed' ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              onClick={() => onSplitConfigChange({ ...splitConfig, mode: 'fixed' })}
+            >
+              Rasio Tetap
+            </button>
+          </div>
+          {splitConfig.mode === 'fixed' ? (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Bunga {Math.round(splitConfig.interestRatio)}%</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Pokok {Math.round(100 - splitConfig.interestRatio)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={splitConfig.interestRatio}
+                onChange={(e) => onSplitConfigChange({ ...splitConfig, interestRatio: Number(e.target.value) })}
+                style={{ width: '100%', accentColor: 'var(--primary)' }}
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Nilai cicilan tetap; hanya proporsi bunga & pokok yang dipaksa ke rasio ini. Sisa pokok & lama pelunasan menyesuaikan (loan mungkin tidak lunas tepat di akhir tenor).
+              </p>
+            </div>
+          ) : (
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Proporsi bunga:pokok dihitung akurat per bulan sesuai metode {bankSchemes.find(b => b.id === selectedBankSchemeId)?.calculationType === 'flat' ? 'Flat' : bankSchemes.find(b => b.id === selectedBankSchemeId)?.calculationType === 'effective' ? 'Efektif' : 'Anuitas'}. Kolom "Bunga:Pokok" menampilkan rasio aktualnya.
+            </p>
+          )}
+        </div>
+
+        {/* Apresiasi Harga Rumah */}
+        <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <TrendingUp size={16} style={{ color: 'var(--success)' }} />
+            <strong style={{ fontSize: '0.9rem' }}>Apresiasi Harga Rumah / Tahun</strong>
+          </div>
+          <div className="input-wrapper" style={{ maxWidth: '160px' }}>
+            <input
+              type="number"
+              step="0.5"
+              className="input-field input-field-suffixed"
+              value={appreciationRate || ''}
+              onChange={(e) => onAppreciationRateChange(Number(e.target.value))}
+            />
+            <span className="input-suffix">% / thn</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+            Estimasi kenaikan harga rumah per tahun (dimajemukkan). Dipakai untuk kolom <strong>Estimasi Nilai Rumah</strong> & kartu untung/rugi jual. Basis: harga rumah saat ini {formatRupiah(propertyPrice)}.
+          </p>
+        </div>
+      </div>
+
       {/* Tenor Shortening Banner */}
       {isShortened && (
         <div style={{ background: 'var(--success-light)', border: '1px solid rgba(52,211,153,0.3)', padding: '16px', borderRadius: 'var(--radius-md)', display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '20px' }}>
@@ -219,9 +318,54 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
             <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)', marginTop: '2px' }}>{formatRupiah(totalOutflowAtPayoff)}</div>
           </div>
         </div>
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--border-color)' }}>
-          💡 <strong>Estimasi resale:</strong> Untung/Rugi ≈ (Harga Jual − Pajak Penjual − <em>Sisa Pokok</em> pada bulan jual) − <em>Total Biaya Keluar</em> pada bulan tsb. Gunakan kolom <strong>Total Biaya Keluar</strong> & <strong>Sisa Pokok</strong> di tabel di bawah.
-        </p>
+
+        {/* Estimasi Untung/Rugi Jual (interaktif) */}
+        <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px dashed var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <strong style={{ fontSize: '0.9rem' }}>Estimasi Untung/Rugi bila dijual pada bulan ke-</strong>
+            <div className="input-wrapper" style={{ width: '90px' }}>
+              <input
+                type="number"
+                min={1}
+                max={schedule.length}
+                className="input-field"
+                style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                value={resaleMonth || ''}
+                onChange={(e) => setResaleMonth(Number(e.target.value) || 1)}
+              />
+            </div>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              ({rRow?.dateStr || '-'})
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Estimasi Harga Jual</div>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--success)' }}>{formatRupiah(rValue)}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>− Pajak Penjual ({sellerTaxPercent}%)</div>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--warning)' }}>{formatRupiah(rPajakPenjual)}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>− Sisa Pokok (Pelunasan KPR)</div>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--error)' }}>{formatRupiah(rSisaPokok)}</strong>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>− Total Biaya Keluar</div>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{formatRupiah(rTotalKeluar)}</strong>
+            </div>
+            <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '12px' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>= Estimasi Untung/Rugi</div>
+              <strong style={{ fontSize: '1.05rem', color: rProfit >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                {rProfit >= 0 ? '+' : '−'}{formatRupiah(Math.abs(rProfit))}
+              </strong>
+            </div>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '10px' }}>
+            Untung/Rugi = Harga Jual − Pajak Penjual − Sisa Pokok − Total Biaya Keluar. Estimasi harga jual = harga rumah dimajemukkan {appreciationRate}%/tahun.
+          </p>
+        </div>
       </div>
 
       {/* Grouped Periods Summary */}
@@ -297,10 +441,12 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Bunga (%)</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Cicilan Pokok</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Cicilan Bunga</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Bunga : Pokok</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Total Angsuran</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Pelunasan Ekstra</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600 }}>Sisa Pokok</th>
                 <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Total Biaya Keluar</th>
+                <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Estimasi Nilai Rumah</th>
               </tr>
             </thead>
             <tbody>
@@ -315,7 +461,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                     {/* Rate increase / change warning insertion */}
                     {isRateChanged && (
                       <tr style={{ background: isFloatingJustStarted ? 'var(--error-light)' : 'var(--warning-light)' }}>
-                        <td colSpan={9} style={{ padding: '10px 16px', fontSize: '0.8rem', color: isFloatingJustStarted ? 'var(--error)' : 'var(--warning)', fontWeight: 600 }}>
+                        <td colSpan={11} style={{ padding: '10px 16px', fontSize: '0.8rem', color: isFloatingJustStarted ? 'var(--error)' : 'var(--warning)', fontWeight: 600 }}>
                           ⚠️ Penyesuaian Angsuran: 
                           {isFloatingJustStarted 
                             ? ` Bunga berubah dari Fixed ke Floating (${row.interestRate}%). Cicilan naik dari ${formatRupiah(prevRow.installment)} menjadi ${formatRupiah(row.installment)} (Naik ${pctIncrease}%!).` 
@@ -334,6 +480,12 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                       </td>
                       <td style={{ padding: '12px 16px' }}>{formatRupiah(row.principalPayment)}</td>
                       <td style={{ padding: '12px 16px' }}>{formatRupiah(row.interestPayment)}</td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                        {(() => {
+                          const ip = row.installment > 0 ? Math.round((row.interestPayment / row.installment) * 100) : 0;
+                          return `${ip}% : ${100 - ip}%`;
+                        })()}
+                      </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600 }}>{formatRupiah(row.installment)}</td>
                       
                       {/* Extra Payment Cell */}
@@ -387,6 +539,9 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
                         {formatRupiah(cumulativeByMonth[row.monthNumber])}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap' }}>
+                        {formatRupiah(projectedValue(row.monthNumber))}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -442,6 +597,11 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                   <span>{formatRupiah(row.principalPayment)}</span>
                 </div>
 
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <span>Bunga:Pokok:</span>
+                  <span>{(() => { const ip = row.installment > 0 ? Math.round((row.interestPayment / row.installment) * 100) : 0; return `${ip}%:${100 - ip}%`; })()}</span>
+                </div>
+
                 <div style={{ borderTop: '1px dashed var(--border-color)', margin: '4px 0' }}></div>
 
                 {/* Extra Payment in Card */}
@@ -493,6 +653,9 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, textAlign: 'right' }}>
                   Total Keluar: {formatRupiah(cumulativeByMonth[row.monthNumber])}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600, textAlign: 'right' }}>
+                  Nilai Rumah: {formatRupiah(projectedValue(row.monthNumber))}
                 </div>
               </div>
             );
