@@ -75,6 +75,7 @@ export interface UpfrontCosts {
   pnbpFee?: number; // PNBP
   cekSertifikatFee?: number; // Cek sertifikat, validasi & cek zona
   validasiPajakFee?: number; // Validasi Pajak Pembeli
+  renovasiFee?: number; // Biaya Renovasi
 }
 
 export interface SplitConfig {

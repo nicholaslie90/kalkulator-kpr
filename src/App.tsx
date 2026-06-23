@@ -749,6 +749,7 @@ export default function App() {
     { name: 'Asuransi KPR', value: ((inputs.asuransiPercent || 0) / 100) * plafond, color: '#ec4899' },
     { name: 'Admin & Appraisal', value: (inputs.adminFee || 0) + (inputs.appraisalFee || 0), color: '#8b5cf6' },
     { name: 'Biaya Transaksi & Balik Nama', value: transactionFeesTotal, color: '#14b8a6' },
+    { name: 'Biaya Renovasi', value: upfrontCosts.renovasiFee ?? 0, color: '#f97316' },
     { name: 'Biaya Lainnya', value: upfrontCosts.customFees.reduce((sum, f) => sum + f.amount, 0), color: '#64748b' }
   ];
 
@@ -930,7 +931,7 @@ export default function App() {
               onClick={() => handleNavClick('upfront')}
             >
               <Receipt size={18} />
-              <span>Biaya Akad & Pajak</span>
+              <span>Biaya-biaya</span>
             </button>
 
             <button 

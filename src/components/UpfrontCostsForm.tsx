@@ -96,13 +96,14 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
   // Pajak Penjual: info saja, TIDAK masuk total biaya pembeli
   const sellerTaxCost = (sellerTaxPercent / 100) * transactionValue;
   const transactionFeesCost = ppjbFee + skptFee + ajbFee + balikNamaFee + pnbpFee + cekSertifikatFee + validasiPajakFee;
+  const renovasiFee = upfrontCosts.renovasiFee ?? 0;
   const customFeesCost = upfrontCosts.customFees.reduce((sum, f) => sum + f.amount, 0);
-  const totalAkadCost = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + customFeesCost;
+  const totalAkadCost = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + renovasiFee + customFeesCost;
 
   return (
     <div className="glass-panel" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Rincian Biaya Akad & Pajak Awal</h3>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Rincian Biaya-biaya</h3>
         <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
           Bank Aktif: {activeBankScheme.bankName}
         </span>
@@ -115,7 +116,7 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
         <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-            Total Biaya Akad & Pajak
+            Total Biaya-biaya
           </span>
           <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
             {formatRupiah(totalAkadCost)}
@@ -364,6 +365,26 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
             <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Subtotal Biaya Transaksi & Notaris</span>
             <strong style={{ color: 'var(--primary)' }}>{formatRupiah(transactionFeesCost + bphtbCost)}</strong>
           </div>
+        </div>
+
+        {/* Biaya Renovasi */}
+        <div className="input-group" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <label className="input-label">Biaya Renovasi</label>
+            <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{formatRupiah(renovasiFee)}</strong>
+          </div>
+          <div className="input-wrapper">
+            <span className="input-prefix">Rp</span>
+            <CurrencyInput
+              className="input-field input-field-prefixed"
+              placeholder="Contoh: 50.000.000"
+              value={renovasiFee}
+              onValueChange={(n) => handleFieldChange('renovasiFee', n)}
+            />
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Estimasi biaya renovasi/perbaikan rumah. Ikut dihitung dalam total biaya & modal awal.
+          </span>
         </div>
 
         {/* Custom Fees Section */}

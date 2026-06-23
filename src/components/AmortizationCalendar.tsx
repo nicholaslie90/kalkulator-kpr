@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { AmortizationRow, BankScheme, SplitConfig } from '../utils/types';
 import { formatRupiah } from '../utils/formatters';
-import { Plus, X, Check, Timer, SlidersHorizontal, TrendingUp } from 'lucide-react';
+import { downloadCsv, downloadExcel, exportPdf, sanitizeFilename } from '../utils/exporters';
+import { Plus, X, Check, Timer, SlidersHorizontal, TrendingUp, Download, FileSpreadsheet, FileText, Table2 } from 'lucide-react';
 
 interface AmortizationCalendarProps {
   schedule: AmortizationRow[];
@@ -46,6 +47,7 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   const [extraVal, setExtraVal] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [resaleMonth, setResaleMonth] = useState<number>(36);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Proyeksi nilai rumah pada bulan ke-m (dimajemukkan per tahun).
   const projectedValue = (monthNumber: number) =>
@@ -110,6 +112,48 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
   const rNetProceeds = rValue - rPajakPenjual - rSisaPokok; // uang bersih diterima setelah lunasi KPR & pajak
   const rProfit = rNetProceeds - rTotalKeluar; // dibanding total modal yang sudah keluar
 
+  // --- Ekspor data kalender (CSV / Excel / PDF) ---
+  const activeScheme = bankSchemes.find(b => b.id === selectedBankSchemeId);
+  const exportTitle = `Kalender Cicilan KPR — ${activeScheme?.bankName ?? ''} ${activeScheme?.schemeName ?? ''}`.trim();
+  const exportMeta = [
+    `Bank / Skema: ${activeScheme?.bankName ?? '-'} (${activeScheme?.schemeName ?? '-'})`,
+    `Harga Rumah: ${formatRupiah(propertyPrice)}`,
+    `Modal Awal (DP + Biaya): ${formatRupiah(initialOutflow)}`,
+    `Total Bunga: ${formatRupiah(totalInterest)} | Total Cicilan + Bunga: ${formatRupiah(totalPayment)}`,
+    `Apresiasi Harga: ${appreciationRate}%/tahun | Alokasi Bunga:Pokok: ${splitConfig.mode === 'fixed' ? `Rasio Tetap ${splitConfig.interestRatio}:${100 - splitConfig.interestRatio}` : 'Otomatis'}`,
+  ];
+  const exportHeaders = ['Bulan', 'Tanggal', 'Bunga (%)', 'Cicilan Pokok', 'Cicilan Bunga', 'Bunga:Pokok', 'Total Angsuran', 'Pelunasan Ekstra', 'Sisa Pokok', 'Total Biaya Keluar', 'Estimasi Nilai Rumah'];
+  const exportData = schedule.map(row => {
+    const ip = row.installment > 0 ? Math.round((row.interestPayment / row.installment) * 100) : 0;
+    return {
+      bulan: row.monthNumber,
+      tanggal: row.dateStr,
+      bungaPct: row.interestRate,
+      pokok: Math.round(row.principalPayment),
+      bunga: Math.round(row.interestPayment),
+      rasio: `${ip}:${100 - ip}`,
+      angsuran: Math.round(row.installment),
+      ekstra: Math.round(row.extraPayment),
+      sisaPokok: Math.round(row.remainingBalance),
+      totalKeluar: Math.round(cumulativeByMonth[row.monthNumber]),
+      nilaiRumah: Math.round(projectedValue(row.monthNumber)),
+    };
+  });
+  const numericRows = exportData.map(d => [d.bulan, d.tanggal, d.bungaPct, d.pokok, d.bunga, d.rasio, d.angsuran, d.ekstra, d.sisaPokok, d.totalKeluar, d.nilaiRumah]);
+  const displayRows = exportData.map(d => [
+    `#${d.bulan}`, d.tanggal, `${d.bungaPct}%`, formatRupiah(d.pokok), formatRupiah(d.bunga),
+    `${d.rasio.split(':')[0]}% : ${d.rasio.split(':')[1]}%`, formatRupiah(d.angsuran),
+    d.ekstra > 0 ? formatRupiah(d.ekstra) : '-', formatRupiah(d.sisaPokok), formatRupiah(d.totalKeluar), formatRupiah(d.nilaiRumah),
+  ]);
+  const exportFilename = sanitizeFilename(`kalender-cicilan-${activeScheme?.bankName ?? 'kpr'}`);
+
+  const handleExport = (kind: 'csv' | 'excel' | 'pdf') => {
+    setShowExportMenu(false);
+    if (kind === 'csv') downloadCsv(exportFilename, exportHeaders, numericRows, [exportTitle, ...exportMeta]);
+    else if (kind === 'excel') downloadExcel(exportFilename, exportTitle, exportMeta, exportHeaders, displayRows);
+    else exportPdf(exportTitle, exportMeta, exportHeaders, displayRows);
+  };
+
   // Interest saved estimate (rough difference)
   // We can calculate this by running the calculation without extra payments, but since we are displaying the summary cards,
   // let's show the final payoff date and actual tenor clearly!
@@ -138,10 +182,10 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
           >
             Tampilan Tabel
           </button>
-          <button 
-            className="btn" 
-            style={{ 
-              fontSize: '0.8rem', 
+          <button
+            className="btn"
+            style={{
+              fontSize: '0.8rem',
               padding: '6px 12px',
               background: viewMode === 'cards' ? 'var(--primary)' : 'var(--bg-tertiary)',
               color: viewMode === 'cards' ? '#ffffff' : 'var(--text-primary)',
@@ -150,6 +194,36 @@ export const AmortizationCalendar: React.FC<AmortizationCalendarProps> = ({
           >
             Tampilan Kartu Bulanan
           </button>
+
+          {/* Export dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn"
+              style={{ fontSize: '0.8rem', padding: '6px 12px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setShowExportMenu(v => !v)}
+            >
+              <Download size={14} /> Ekspor
+            </button>
+            {showExportMenu && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowExportMenu(false)} />
+                <div
+                  className="glass-panel"
+                  style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 50, padding: '6px', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '2px', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.18))' }}
+                >
+                  <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', gap: '8px', fontSize: '0.82rem', padding: '8px 10px' }} onClick={() => handleExport('csv')}>
+                    <Table2 size={15} style={{ color: 'var(--primary)' }} /> CSV (.csv)
+                  </button>
+                  <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', gap: '8px', fontSize: '0.82rem', padding: '8px 10px' }} onClick={() => handleExport('excel')}>
+                    <FileSpreadsheet size={15} style={{ color: 'var(--success)' }} /> Excel (.xls)
+                  </button>
+                  <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', gap: '8px', fontSize: '0.82rem', padding: '8px 10px' }} onClick={() => handleExport('pdf')}>
+                    <FileText size={15} style={{ color: 'var(--error)' }} /> PDF (cetak / simpan)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

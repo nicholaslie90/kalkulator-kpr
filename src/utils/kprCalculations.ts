@@ -260,9 +260,10 @@ export const calculateKpr = (
     (upfrontInputs.cekSertifikatFee ?? 0) +
     (upfrontInputs.validasiPajakFee ?? 0);
 
+  const renovasiCost = upfrontInputs.renovasiFee ?? 0;
   const customFeesCost = upfrontInputs.customFees.reduce((sum, fee) => sum + fee.amount, 0);
 
-  const upfrontCostsTotal = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + customFeesCost;
+  const upfrontCostsTotal = provisiCost + adminCost + appraisalCost + notarisCost + asuransiCost + bphtbCost + transactionFeesCost + renovasiCost + customFeesCost;
   const totalCashNeeded = Math.max(0, dpAmount - bookingFee) + upfrontCostsTotal;
 
   return {
