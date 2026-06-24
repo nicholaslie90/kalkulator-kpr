@@ -167,7 +167,7 @@ export function TutorialTour({
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>{step.body}</p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{stepIndex + 1} / {steps.length}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{stepIndex + 1} / {steps.length}</span>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: '0.8rem' }}>Lewati</button>
             {!isFirst && (
