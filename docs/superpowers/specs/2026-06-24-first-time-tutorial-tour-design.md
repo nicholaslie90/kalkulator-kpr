@@ -93,7 +93,7 @@ using a lucide icon (`GraduationCap` or `HelpCircle`). On click: open the tour
 (reset to step 0) regardless of the persistence flag; on mobile, after opening,
 the drawer stays open for the sidebar steps.
 
-## Tour steps (8)
+## Tour steps (9)
 
 1. **Welcome** (centered, no target) — short intro to the dashboard.
 2. `tour-property-picker` — pick/switch the active property here.
@@ -102,11 +102,11 @@ the drawer stays open for the sidebar steps.
 5. `tour-nav-upfront` — Biaya-biaya: upfront costs, taxes, fees.
 6. `tour-nav-calendar` — Kalender Cicilan: amortization schedule & extra payments.
 7. `tour-nav-compare` — Bandingkan Pilihan: side-by-side comparison.
-8. `tour-data-io` + closing note — export/import; all data stored locally in the
+8. `tour-theme` — theme switcher: Terang / Sistem / Gelap.
+9. `tour-data-io` + closing note — export/import; all data stored locally in the
    browser. Final step label "Selesai".
 
-(Theme switcher `tour-theme` may be folded into a step or added as a 9th step;
-content is explanatory only and switches no tabs.)
+All steps are explanatory only and switch no tabs.
 
 ## Persistence
 
