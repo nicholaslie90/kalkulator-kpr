@@ -147,6 +147,10 @@ export function TutorialTour({
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
+          // Fully opaque background so the tutorial text is easy to read.
+          background: 'var(--bg-primary)',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
           ...tooltipStyle,
         }}
       >
