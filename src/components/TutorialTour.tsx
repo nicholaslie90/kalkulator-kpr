@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { X, GraduationCap } from 'lucide-react';
 
 export interface TutorialStep {
@@ -16,6 +16,7 @@ interface Rect {
 }
 
 const PADDING = 8; // breathing room around the spotlighted element
+const TOOLTIP_HEIGHT_ESTIMATE = 220; // safe fallback before the first measurement
 
 export function TutorialTour({
   steps,
@@ -28,6 +29,8 @@ export function TutorialTour({
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [tooltipHeight, setTooltipHeight] = useState(TOOLTIP_HEIGHT_ESTIMATE);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   const step = steps[stepIndex];
   const isFirst = stepIndex === 0;
@@ -78,6 +81,15 @@ export function TutorialTour({
     };
   }, [isOpen, step, measure]);
 
+  // Measure the rendered tooltip height so placement math is accurate.
+  // Re-measure whenever the step changes (content size may differ per step).
+  useLayoutEffect(() => {
+    if (tooltipRef.current) {
+      const h = tooltipRef.current.getBoundingClientRect().height;
+      if (h > 0) setTooltipHeight(h);
+    }
+  }, [stepIndex, rect]);
+
   // Escape closes; ArrowRight/ArrowLeft navigate.
   useEffect(() => {
     if (!isOpen) return;
@@ -99,7 +111,7 @@ export function TutorialTour({
   const back = () => setStepIndex((i) => Math.max(i - 1, 0));
 
   // Tooltip position: beside the rect per placement, else centered.
-  const tooltipStyle = computeTooltipStyle(rect, step.placement);
+  const tooltipStyle = computeTooltipStyle(rect, step.placement, tooltipHeight);
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} role="dialog" aria-modal="true">
@@ -126,6 +138,7 @@ export function TutorialTour({
 
       {/* Tooltip card */}
       <div
+        ref={tooltipRef}
         className="glass-panel animate-fade-in"
         style={{
           position: 'fixed',
@@ -168,7 +181,7 @@ export function TutorialTour({
 
 // Position the tooltip near the target rect, clamped to the viewport. Falls
 // back to dead-center when there is no rect (centered step or missing target).
-function computeTooltipStyle(rect: Rect | null, placement?: TutorialStep['placement']): React.CSSProperties {
+function computeTooltipStyle(rect: Rect | null, placement: TutorialStep['placement'] | undefined, tooltipHeight: number): CSSProperties {
   const margin = 16;
   const tipW = Math.min(340, (typeof window !== 'undefined' ? window.innerWidth : 360) - 32);
   if (!rect || placement === 'center') {
@@ -177,15 +190,15 @@ function computeTooltipStyle(rect: Rect | null, placement?: TutorialStep['placem
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   // Default placement: below the target if room, else above.
-  const below = rect.top + rect.height + margin + 180 < vh;
+  const below = rect.top + rect.height + margin + tooltipHeight < vh;
   const place = placement ?? (below ? 'bottom' : 'top');
   let top = 0;
   let left = rect.left;
 
   if (place === 'bottom') top = rect.top + rect.height + margin;
-  else if (place === 'top') top = Math.max(margin, rect.top - margin - 180);
-  else if (place === 'right') { top = rect.top; left = rect.left + rect.width + margin; }
-  else if (place === 'left') { top = rect.top; left = rect.left - tipW - margin; }
+  else if (place === 'top') top = Math.max(margin, rect.top - margin - tooltipHeight);
+  else if (place === 'right') { top = rect.top + rect.height / 2 - tooltipHeight / 2; left = rect.left + rect.width + margin; }
+  else if (place === 'left') { top = rect.top + rect.height / 2 - tooltipHeight / 2; left = rect.left - tipW - margin; }
 
   // Clamp horizontally into the viewport.
   left = Math.max(margin, Math.min(left, vw - tipW - margin));
