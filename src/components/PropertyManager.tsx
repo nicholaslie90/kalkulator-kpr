@@ -40,6 +40,7 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
   const [discountPercent, setDiscountPercent] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [dpPercent, setDpPercent] = useState(10);
+  const [dpAmount, setDpAmount] = useState(50000000);
   const [bookingFee, setBookingFee] = useState(0);
   const [notes, setNotes] = useState('');
 
@@ -59,6 +60,7 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
     setDiscountPercent(0);
     setDiscount(0);
     setDpPercent(10);
+    setDpAmount(50000000);
     setBookingFee(0);
     setNotes('');
     setEditId(null);
@@ -92,6 +94,7 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
     setDiscountPercent(p.discountPercent || 0);
     setDiscount(p.discount || 0);
     setDpPercent(p.dpPercent);
+    setDpAmount(p.dpAmount);
     setBookingFee(p.bookingFee || 0);
     setNotes(p.notes);
     setIsEditing(true);
@@ -100,9 +103,6 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || price <= 0) return;
-
-    const netPrice = Math.max(0, price - discount);
-    const dpAmount = Math.round((dpPercent / 100) * netPrice);
 
     const data: PropertyProfile = {
       id: editId || Date.now().toString(),
@@ -135,28 +135,53 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
     resetForm();
   };
 
+  // DP di-anchor pada persentase: ketika harga bersih berubah, nominal DP
+  // dihitung ulang dari persen agar tetap konsisten (mengikuti pola Diskon).
+  const syncDpToNetPrice = (netPrice: number, percent: number) => {
+    setDpAmount(Math.round((percent / 100) * Math.max(0, netPrice)));
+  };
+
   const handlePriceChange = (val: string) => {
-    const parsed = parseInt(val.replace(/[^0-9]/g, ''), 10);
+    const parsed = parseFloat(val.replace(/[^0-9.]/g, ''));
     const newPrice = isNaN(parsed) ? 0 : parsed;
     setPrice(newPrice);
-    
+
     // Recalculate discount nominal based on discount percent
     const newDiscount = Math.round((discountPercent / 100) * newPrice);
     setDiscount(newDiscount);
+    syncDpToNetPrice(newPrice - newDiscount, dpPercent);
   };
 
   const handleDiscountPercentChange = (val: number) => {
     setDiscountPercent(val);
     const newDiscount = Math.round((val / 100) * price);
     setDiscount(newDiscount);
+    syncDpToNetPrice(price - newDiscount, dpPercent);
   };
 
   const handleDiscountChange = (val: string) => {
-    const parsed = parseInt(val.replace(/[^0-9]/g, ''), 10);
+    const parsed = parseFloat(val.replace(/[^0-9.]/g, ''));
     const newDiscount = isNaN(parsed) ? 0 : parsed;
     setDiscount(newDiscount);
     const newPercent = price > 0 ? (newDiscount / price) * 100 : 0;
     setDiscountPercent(Number(newPercent.toFixed(2)));
+    syncDpToNetPrice(price - newDiscount, dpPercent);
+  };
+
+  // DP dapat diisi via persen ATAU nominal Rupiah langsung; keduanya disinkronkan.
+  const handleDpPercentChange = (val: number) => {
+    const pct = isNaN(val) ? 0 : val;
+    setDpPercent(pct);
+    const netPrice = Math.max(0, price - discount);
+    setDpAmount(Math.round((pct / 100) * netPrice));
+  };
+
+  const handleDpAmountChange = (val: number) => {
+    const amount = isNaN(val) ? 0 : val;
+    setDpAmount(amount);
+    const netPrice = Math.max(0, price - discount);
+    const newPercent = netPrice > 0 ? (amount / netPrice) * 100 : 0;
+    setDpPercent(Number(newPercent.toFixed(2)));
   };
 
   return (
@@ -360,21 +385,29 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
 
             <div className="grid-2">
               <div className="input-group">
-                <label className="input-label">Down Payment (DP)</label>
+                <label className="input-label">Down Payment (DP) (%) / (Rp)</label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <div className="input-wrapper" style={{ flex: 1.2 }}>
+                  <div className="input-wrapper" style={{ flex: 1 }}>
                     <input
                       type="number"
                       className="input-field input-field-suffixed"
+                      placeholder="%"
                       min="0"
                       max="100"
+                      step="any"
                       value={dpPercent || ''}
-                      onChange={(e) => setDpPercent(parseInt(e.target.value, 10) || 0)}
+                      onChange={(e) => handleDpPercentChange(parseFloat(e.target.value))}
                     />
                     <span className="input-suffix">%</span>
                   </div>
-                  <div style={{ flex: 1.8, fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {formatRupiah(Math.round((dpPercent / 100) * (price - discount)))}
+                  <div className="input-wrapper" style={{ flex: 2 }}>
+                    <span className="input-prefix">Rp</span>
+                    <CurrencyInput
+                      className="input-field input-field-prefixed"
+                      placeholder="Nominal DP"
+                      value={dpAmount}
+                      onValueChange={handleDpAmountChange}
+                    />
                   </div>
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
@@ -394,7 +427,7 @@ export const PropertyManager: React.FC<PropertyManagerProps> = ({
                   />
                 </div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  * Mengurangi DP Akad menjadi: <strong>{formatRupiah(Math.max(0, Math.round((dpPercent / 100) * (price - discount)) - bookingFee))}</strong>
+                  * Mengurangi DP Akad menjadi: <strong>{formatRupiah(Math.max(0, dpAmount - bookingFee))}</strong>
                 </span>
               </div>
             </div>
