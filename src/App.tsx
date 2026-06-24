@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { PropertyProfile, UpfrontCosts, KprScenario, BankScheme, SplitConfig } from './utils/types';
 import { calculateKpr } from './utils/kprCalculations';
 import { formatRupiah } from './utils/formatters';
@@ -11,6 +11,7 @@ import { UpfrontCostsForm } from './components/UpfrontCostsForm';
 import { AmortizationCalendar } from './components/AmortizationCalendar';
 import { PropertyComparison } from './components/PropertyComparison';
 import { UpfrontDonutChart, AmortizationChart } from './components/KprCharts';
+import { TutorialTour, type TutorialStep } from './components/TutorialTour';
 
 // Icons
 import { 
@@ -31,7 +32,8 @@ import {
   AlertTriangle,
   X,
   Menu,
-  Trash2
+  Trash2,
+  GraduationCap
 } from 'lucide-react';
 
 // Theme preference type + guard. Persisted in localStorage/IndexedDB under 'kpr_theme'.
@@ -175,6 +177,62 @@ const DEFAULT_SCENARIOS: KprScenario[] = [
   { dpPercent: 10, tenorYears: 15 },
   { dpPercent: 15, tenorYears: 20 },
   { dpPercent: 20, tenorYears: 10 }
+];
+
+const TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    placement: 'center',
+    title: 'Selamat Datang di KPR Smart Dashboard 👋',
+    body: 'Aplikasi ini membantu Anda menghitung & membandingkan simulasi KPR rumah. Mari kita lihat fitur utamanya sebentar — Anda bisa melewati kapan saja.',
+  },
+  {
+    targetId: 'tour-property-picker',
+    placement: 'bottom',
+    title: 'Pilih Properti Aktif',
+    body: 'Semua perhitungan mengikuti properti yang dipilih di sini. Ganti properti kapan saja untuk melihat simulasi yang berbeda.',
+  },
+  {
+    targetId: 'tour-nav-properties',
+    placement: 'right',
+    title: 'Kelola Properti',
+    body: 'Tambah, ubah, atau hapus profil rumah incaran Anda — lengkap dengan harga, DP, tipe, dan catatan.',
+  },
+  {
+    targetId: 'tour-nav-calculator',
+    placement: 'right',
+    title: 'Skema & Bunga',
+    body: 'Atur skema bank, jenis suku bunga (fixed/berjenjang/floating), serta tenor pinjaman.',
+  },
+  {
+    targetId: 'tour-nav-upfront',
+    placement: 'right',
+    title: 'Biaya-biaya',
+    body: 'Hitung biaya di awal: DP, pajak (BPHTB), provisi, notaris, asuransi, biaya transaksi, hingga renovasi.',
+  },
+  {
+    targetId: 'tour-nav-calendar',
+    placement: 'right',
+    title: 'Kalender Cicilan',
+    body: 'Lihat jadwal angsuran bulan per bulan, simulasikan pelunasan dipercepat, dan proyeksi nilai jual rumah.',
+  },
+  {
+    targetId: 'tour-nav-compare',
+    placement: 'right',
+    title: 'Bandingkan Pilihan',
+    body: 'Sandingkan beberapa properti & skenario DP/tenor berdampingan untuk menemukan pilihan terbaik.',
+  },
+  {
+    targetId: 'tour-theme',
+    placement: 'top',
+    title: 'Tampilan Terang / Gelap',
+    body: 'Ubah tema antarmuka sesuai selera: Terang, mengikuti Sistem, atau Gelap.',
+  },
+  {
+    targetId: 'tour-data-io',
+    placement: 'bottom',
+    title: 'Data Anda Tersimpan Lokal',
+    body: 'Semua data tersimpan di browser ini. Gunakan tombol Export/Import untuk mencadangkan atau memindahkannya ke perangkat lain. Selamat mencoba!',
+  },
 ];
 
 function LoadingScreen() {
@@ -350,6 +408,10 @@ export default function App() {
 
   // Property pending delete confirmation (null = no dialog open).
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // First-time tutorial spotlight tour.
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const tutorialAutoChecked = useRef(false);
 
   // Responsive layout + collapsible sidebar.
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -535,6 +597,19 @@ export default function App() {
     loadState();
   }, []);
 
+  // Auto-open the tour once on first visit, after initial loading completes.
+  useEffect(() => {
+    if (isLoading || tutorialAutoChecked.current) return;
+    tutorialAutoChecked.current = true;
+    if (localStorage.getItem('kpr_tutorial_done') !== 'true') {
+      const id = setTimeout(() => {
+        setSidebarOpen(true);
+        setTutorialOpen(true);
+      }, 0);
+      return () => clearTimeout(id);
+    }
+  }, [isLoading]);
+
   // Sync state to localStorage and IndexedDB
   useEffect(() => {
     if (isLoading) return;
@@ -672,6 +747,21 @@ export default function App() {
       }
     };
     input.click();
+  };
+
+  // Open the tour (auto or via sidebar button). Ensure the sidebar is open so
+  // its nav items can be spotlighted (this opens the mobile drawer too).
+  const openTutorial = () => {
+    setSidebarOpen(true);
+    setTutorialOpen(true);
+  };
+
+  // Closing via "Lewati" or "Selesai" both persist the flag so it does not
+  // auto-open again. Persist to localStorage AND IndexedDB like everything else.
+  const handleCloseTutorial = () => {
+    setTutorialOpen(false);
+    localStorage.setItem('kpr_tutorial_done', 'true');
+    setDbValue('kpr_tutorial_done', true);
   };
 
   // Property Handlers
@@ -828,6 +918,7 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', minWidth: 0 }}>
               {!isMobile && <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Pilih Properti:</span>}
               <select
+                id="tour-property-picker"
                 value={selectedPropertyId || ''}
                 onChange={(e) => setSelectedPropertyId(e.target.value)}
                 style={{
@@ -853,9 +944,9 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <button 
-              className="btn btn-secondary" 
+          <div id="tour-data-io" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button
+              className="btn btn-secondary"
               style={{ padding: '8px', borderRadius: '50%', width: '36px', height: '36px' }}
               onClick={handleExportData}
               title="Export data ke JSON (untuk push ke Git)"
@@ -919,7 +1010,8 @@ export default function App() {
               Menu Utama
             </span>
             
-            <button 
+            <button
+              id="tour-nav-properties"
               className={`btn ${activeTab === 'properties' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
               onClick={() => handleNavClick('properties')}
@@ -928,7 +1020,8 @@ export default function App() {
               <span>Kelola Properti ({properties.length})</span>
             </button>
 
-            <button 
+            <button
+              id="tour-nav-calculator"
               className={`btn ${activeTab === 'calculator' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
               onClick={() => handleNavClick('calculator')}
@@ -937,7 +1030,8 @@ export default function App() {
               <span>Skema & Bunga</span>
             </button>
 
-            <button 
+            <button
+              id="tour-nav-upfront"
               className={`btn ${activeTab === 'upfront' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
               onClick={() => handleNavClick('upfront')}
@@ -946,7 +1040,8 @@ export default function App() {
               <span>Biaya-biaya</span>
             </button>
 
-            <button 
+            <button
+              id="tour-nav-calendar"
               className={`btn ${activeTab === 'calendar' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
               onClick={() => handleNavClick('calendar')}
@@ -955,7 +1050,8 @@ export default function App() {
               <span>Kalender Cicilan</span>
             </button>
 
-            <button 
+            <button
+              id="tour-nav-compare"
               className={`btn ${activeTab === 'compare' ? 'btn-primary' : 'btn-ghost'}`}
               style={{ justifyContent: 'flex-start', padding: '12px' }}
               onClick={() => handleNavClick('compare')}
@@ -967,6 +1063,15 @@ export default function App() {
 
           {/* Sidebar footer: active property summary + theme switcher */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ justifyContent: 'flex-start', padding: '10px 12px', fontSize: '0.85rem' }}
+              onClick={openTutorial}
+              title="Buka kembali tutorial penggunaan"
+            >
+              <GraduationCap size={16} />
+              <span>Bantuan / Tutorial</span>
+            </button>
             {activeProperty && (
               <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>
@@ -984,7 +1089,7 @@ export default function App() {
             )}
 
             {/* Theme switcher: Light / System / Dark */}
-            <div>
+            <div id="tour-theme">
               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px', paddingLeft: '2px' }}>
                 Tampilan
               </span>
@@ -1334,6 +1439,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* First-time / on-demand tutorial spotlight tour */}
+      <TutorialTour steps={TUTORIAL_STEPS} isOpen={tutorialOpen} onClose={handleCloseTutorial} />
     </div>
   );
 }
