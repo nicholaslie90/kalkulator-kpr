@@ -53,15 +53,15 @@ export const UpfrontCostsForm: React.FC<UpfrontCostsFormProps> = ({
     });
   };
 
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = (field: string, value: number | boolean) => {
     const isBankFee = ['provisiPercent', 'adminFee', 'appraisalFee', 'notarisPercent', 'asuransiPercent'].includes(field);
     if (isBankFee) {
-      onUpdateBankScheme({ [field]: value });
+      onUpdateBankScheme({ [field]: value } as Partial<BankScheme>);
     } else {
       onUpdateUpfrontCosts({
         ...upfrontCosts,
         [field]: value,
-      });
+      } as UpfrontCosts);
     }
   };
 

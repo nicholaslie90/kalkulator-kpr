@@ -1,5 +1,6 @@
 import type {
   KprInputs,
+  BankScheme,
   UpfrontCosts,
   AmortizationRow,
   CalculationSummary,
@@ -87,9 +88,9 @@ export const calculateKpr = (
     const remainingMonths = tenorMonths - m + 1;
 
     // 1. Calculate hypothetical row (no extra payments) to find standard scheduled installment
-    let hypotheticalInstallment = 0;
-    let hypotheticalPrincipal = 0;
-    let hypotheticalInterest = 0;
+    let hypotheticalInstallment: number;
+    let hypotheticalPrincipal: number;
+    let hypotheticalInterest: number;
 
     if (inputs.calculationType === 'annuity') {
       if (annualRate !== lastRateHypothetical) {
@@ -117,14 +118,14 @@ export const calculateKpr = (
     hypotheticalBalance = Math.max(0, hypotheticalBalance - hypotheticalPrincipal);
 
     // 2. Calculate actual row (with extra payments)
-    let installment = 0;
-    let interestPayment = 0;
-    let principalPayment = 0;
+    let installment: number;
+    let interestPayment: number;
+    let principalPayment: number;
 
     if (inputs.calculationType === 'annuity') {
       if (extraPaymentMode === 'reduce_installment') {
         // Recalculate base installment every month using actual remaining balance and original remaining tenor
-        let currentBaseInstallment = 0;
+        let currentBaseInstallment: number;
         if (monthlyRate > 0) {
           currentBaseInstallment = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / 
                                    (Math.pow(1 + monthlyRate, remainingMonths) - 1);
@@ -229,11 +230,12 @@ export const calculateKpr = (
   }
 
   // Upfront costs calculations - support bank-specific fees if part of inputs (BankScheme)
-  const provisiPercent = 'provisiPercent' in inputs ? (inputs as any).provisiPercent : 0;
-  const adminFee = 'adminFee' in inputs ? (inputs as any).adminFee : 0;
-  const appraisalFee = 'appraisalFee' in inputs ? (inputs as any).appraisalFee : 0;
-  const notarisPercent = 'notarisPercent' in inputs ? (inputs as any).notarisPercent : 0;
-  const asuransiPercent = 'asuransiPercent' in inputs ? (inputs as any).asuransiPercent : 0;
+  const bankInputs = inputs as Partial<BankScheme>;
+  const provisiPercent = bankInputs.provisiPercent ?? 0;
+  const adminFee = bankInputs.adminFee ?? 0;
+  const appraisalFee = bankInputs.appraisalFee ?? 0;
+  const notarisPercent = bankInputs.notarisPercent ?? 0;
+  const asuransiPercent = bankInputs.asuransiPercent ?? 0;
 
   const provisiCost = (provisiPercent / 100) * plafond;
   const adminCost = adminFee;

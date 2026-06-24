@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { BankScheme, InterestTier, CalculationType, InterestScheme } from '../utils/types';
+import { genId } from '../utils/ids';
 import { Plus, Trash2, Copy, GripVertical } from 'lucide-react';
 
 // Tampilkan kosong untuk nilai 0/NaN supaya tidak ada "0" yang menempel di depan input
@@ -98,14 +99,14 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
     onUpdateBankScheme({ ...activeScheme, calculationType: type });
   };
 
-  const handleFieldChange = (field: keyof BankScheme, value: any) => {
-    onUpdateBankScheme({ ...activeScheme, [field]: value });
+  const handleFieldChange = (field: keyof BankScheme, value: string | number) => {
+    onUpdateBankScheme({ ...activeScheme, [field]: value } as BankScheme);
   };
 
   const handleAddTier = () => {
     const nextTierNum = activeScheme.tieredTiers.length + 1;
     const newTier: InterestTier = {
-      id: Date.now().toString(),
+      id: genId('t-'),
       rate: 5 + nextTierNum, // default values
       durationYears: 2,
     };
@@ -136,7 +137,7 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
 
   const handleAddNewBank = () => {
     const newBank: BankScheme = {
-      id: 'bank-' + Date.now(),
+      id: genId('bank-'),
       bankName: 'Bank Baru',
       schemeName: 'Skema Baru',
       tenorYears: 15,
@@ -145,7 +146,7 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
       fixedRate: 4.5,
       fixedYears: 3,
       tieredTiers: [
-        { id: 't-' + Date.now(), rate: 4.5, durationYears: 3 }
+        { id: genId('t-'), rate: 4.5, durationYears: 3 }
       ],
       floatingRate: 11.0,
       startDate: activeScheme?.startDate || '2026-07',
@@ -163,9 +164,9 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
     e.stopPropagation(); // Prevent card selection click
     const duplicated: BankScheme = {
       ...scheme,
-      id: 'bank-' + Date.now(),
+      id: genId('bank-'),
       bankName: `${scheme.bankName} (Copy)`,
-      tieredTiers: scheme.tieredTiers.map(t => ({ ...t, id: 't-' + Math.random().toString(36).substring(2, 9) }))
+      tieredTiers: scheme.tieredTiers.map(t => ({ ...t, id: genId('t-') }))
     };
     onAddBankScheme(duplicated);
   };

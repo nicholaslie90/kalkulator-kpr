@@ -36,6 +36,9 @@ import {
   GraduationCap
 } from 'lucide-react';
 
+// Main navigation tabs.
+type TabId = 'properties' | 'calculator' | 'upfront' | 'calendar' | 'compare';
+
 // Theme preference type + guard. Persisted in localStorage/IndexedDB under 'kpr_theme'.
 type ThemePref = 'light' | 'dark' | 'system';
 const isThemePref = (v: unknown): v is ThemePref =>
@@ -396,9 +399,9 @@ export default function App() {
   });
   
   // Navigation
-  const [activeTab, setActiveTab] = useState<'properties' | 'calculator' | 'upfront' | 'calendar' | 'compare'>(() => {
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
     const savedTab = localStorage.getItem('kpr_active_tab');
-    return (savedTab as any) || 'calculator';
+    return (savedTab as TabId) || 'calculator';
   });
 
   // Sample-data notice: shown while any built-in example data ([CONTOH] prefix) remains.
@@ -426,7 +429,7 @@ export default function App() {
     return () => mq.removeEventListener('change', handler);
   }, []);
   // Navigate via the sidebar; auto-close the drawer on mobile after selecting.
-  const handleNavClick = (tab: 'properties' | 'calculator' | 'upfront' | 'calendar' | 'compare') => {
+  const handleNavClick = (tab: TabId) => {
     setActiveTab(tab);
     if (isMobile) setSidebarOpen(false);
   };
@@ -468,7 +471,7 @@ export default function App() {
                 const seededExtras = await getDbValue('kpr_extras', {});
                 setExtraPaymentsByProperty(seededExtras);
                 const seededTab = await getDbValue('kpr_active_tab', 'calculator');
-                setActiveTab(seededTab as any);
+                setActiveTab(seededTab as TabId);
                 const seededTheme = await getDbValue('kpr_theme', 'dark');
                 setThemePref(isThemePref(seededTheme) ? seededTheme : 'dark');
                 console.log('✅ Auto-seed complete!');
@@ -575,7 +578,7 @@ export default function App() {
           setActiveTab(savedTab);
         } else {
           const localTab = localStorage.getItem('kpr_active_tab');
-          if (localTab) setActiveTab(localTab as any);
+          if (localTab) setActiveTab(localTab as TabId);
         }
 
         // Load theme
@@ -828,14 +831,11 @@ export default function App() {
 
   const summary = calculateKpr(price, dpAmount, inputs, upfrontCosts, activeExtras, discount, bookingFee, splitConfig);
 
-  // Total fixed months for chart drawing
-  let totalFixedMonths = 0;
-  if (inputs.interestScheme === 'fixed') {
-    totalFixedMonths = inputs.fixedYears * 12;
-  } else {
-    // For tiered scheme, it is fixed for the entire tenor (no floating rate BI)
-    totalFixedMonths = inputs.tenorYears * 12;
-  }
+  // Total fixed months for chart drawing.
+  // For tiered scheme it is fixed for the entire tenor (no floating rate BI).
+  const totalFixedMonths = inputs.interestScheme === 'fixed'
+    ? inputs.fixedYears * 12
+    : inputs.tenorYears * 12;
 
   // Chart Data preparation
   const txValue = upfrontCosts.transactionValue ?? Math.max(0, price - discount);

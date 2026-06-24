@@ -9,7 +9,6 @@ export const UpfrontDonutChart: React.FC<DonutChartProps> = ({ data }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (total === 0) return null;
 
-  let accumulatedAngle = 0;
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
 
@@ -22,8 +21,9 @@ export const UpfrontDonutChart: React.FC<DonutChartProps> = ({ data }) => {
             const percentage = item.value / total;
             const strokeDashoffset = circumference - percentage * circumference;
             const strokeDasharray = `${circumference} ${circumference}`;
-            const rotation = accumulatedAngle * 360;
-            accumulatedAngle += percentage;
+            // Cumulative fraction of all preceding slices → starting angle for this slice.
+            const precedingFraction = data.slice(0, idx).reduce((sum, d) => sum + d.value, 0) / total;
+            const rotation = precedingFraction * 360;
 
             return (
               <circle
