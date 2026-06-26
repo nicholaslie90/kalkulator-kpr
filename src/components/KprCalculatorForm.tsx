@@ -341,20 +341,23 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
           <label className="input-label">Jangka Waktu (Tenor)</label>
           <strong style={{ color: 'var(--primary)' }}>{activeScheme.tenorYears} Tahun ({activeScheme.tenorYears * 12} bulan)</strong>
         </div>
-        <div className="slider-container">
-          <input
-            type="range"
-            className="slider-bar"
-            min="1"
-            max="30"
-            value={activeScheme.tenorYears}
-            onChange={(e) => handleFieldChange('tenorYears', Number(e.target.value))}
-          />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <span>1 Tahun</span>
-          <span>15 Tahun</span>
-          <span>30 Tahun</span>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+          {[5, 10, 15, 20].map(years => (
+            <button
+              key={years}
+              type="button"
+              className="btn"
+              style={{
+                flex: 1,
+                background: activeScheme.tenorYears === years ? 'var(--primary)' : 'var(--bg-tertiary)',
+                color: activeScheme.tenorYears === years ? '#ffffff' : 'var(--text-primary)',
+                border: activeScheme.tenorYears === years ? 'none' : '1px solid var(--border-color)',
+              }}
+              onClick={() => handleFieldChange('tenorYears', years)}
+            >
+              {years} Tahun
+            </button>
+          ))}
         </div>
       </div>
 
