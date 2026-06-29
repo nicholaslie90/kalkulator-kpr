@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { BankScheme, InterestTier, CalculationType, InterestScheme } from '../utils/types';
 import { genId } from '../utils/ids';
 import { Plus, Trash2, Copy, GripVertical } from 'lucide-react';
+import { MonthYearPicker } from './MonthYearPicker';
 
 // Tampilkan kosong untuk nilai 0/NaN supaya tidak ada "0" yang menempel di depan input
 const displayNum = (n: number): number | string => (n === 0 || isNaN(n) ? '' : n);
@@ -433,15 +434,10 @@ export const KprCalculatorForm: React.FC<KprCalculatorFormProps> = ({
       {/* Start Date */}
       <div className="input-group">
         <label className="input-label">Mulai Angsuran Pertama</label>
-        <div className="input-wrapper">
-          <input
-            type="month"
-            className="input-field"
-            value={activeScheme.startDate}
-            onChange={(e) => handleFieldChange('startDate', e.target.value)}
-            required
-          />
-        </div>
+        <MonthYearPicker
+          value={activeScheme.startDate}
+          onChange={(v) => handleFieldChange('startDate', v)}
+        />
       </div>
 
       {/* Interest Rate Scheme Tabs */}
